@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MUV – Mapa de Viatura</title>
+<meta name="theme-color" content="#1f5d3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MUV">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+/* Layout: uma coluna estreita para telemóvel — barra do mês fixa, calendário, painel do dia, formulário. */
+:root{
+  --bg:#f3f5f2; --surface:#ffffff; --line:#d9dfd6; --fg:#1c2620; --muted:#5f6c63;
+  --accent:#1f5d3c; --accent-ink:#ffffff; --accent-soft:#e2eee6;
+  --warn:#a86400; --warn-soft:#fbf0dd; --danger:#b3261e;
+  --f-display:"Barlow Semi Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121814; --surface:#1a221d; --line:#2d3a32; --fg:#e4ebe5; --muted:#97a69c;
+  --accent:#6fc196; --accent-ink:#0d1a12; --accent-soft:#1f3328;
+  --warn:#e2a64a; --warn-soft:#33281a; --danger:#f08a80; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+header .wrap{display:flex;align-items:center;gap:8px;padding-block:10px}
+.plate{font-family:var(--f-display);font-weight:700;font-size:15px;letter-spacing:.06em;border:1.5px solid var(--fg);border-radius:4px;padding:3px 7px;white-space:nowrap;background:var(--surface);display:flex;align-items:center;gap:4px}
+.plate svg{width:14px;height:14px}
+.month{flex:1;display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
+.month h1{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0;text-align:center;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:inherit;cursor:pointer}
+.icon-btn{background:none;border:0;width:36px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
+.icon-btn:hover{background:var(--accent-soft)}
+svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{display:flex;flex-direction:column;gap:20px;padding-block:16px 40px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-family:var(--f-display);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .wd{font-size:11px;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:2px}
+.day{aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-family:var(--f-display);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
+.day.weekend{background:transparent;color:var(--muted);font-weight:500}
+.day.missing{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+.day.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.day.future{color:var(--muted);font-weight:500}
+.day.today{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--fg)}
+.day.sel{outline:3px solid var(--fg);outline-offset:-3px}
+.day .dots{display:flex;gap:2px;height:5px;margin-top:2px}
+.day .dots i{width:4px;height:4px;border-radius:50%;background:currentColor}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.legend .l-done::before{background:var(--accent);border-color:var(--accent)}
+.legend .l-miss::before{background:var(--warn-soft);border-color:var(--warn)}
+.month .abbr{display:none}@media (max-width:420px){.month .full{display:none}.month .abbr{display:inline}.plate svg{display:none}header .wrap{gap:4px}.month h1{font-size:19px;overflow:visible}}
+section{scroll-margin-top:calc(70px + env(safe-area-inset-top,0px))}
+.month h1 small{font-size:15px;color:var(--muted);font-weight:500}
+section h2{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0 0 10px}
+.dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dayhead small{color:var(--muted)}
+.list{display:flex;flex-direction:column;gap:10px}
+.mov{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mov .times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.mov .times div:last-child{text-align:right}
+.mov .t{font-family:var(--f-display);font-size:20px;font-weight:600;line-height:1}
+.mov .k{font-size:13px;color:var(--muted)}
+.dist{font-family:var(--f-display);font-weight:600;font-size:14px;background:var(--accent-soft);color:var(--accent);border-radius:20px;padding:2px 9px;white-space:nowrap}
+.mov .meta{font-size:14px;overflow-wrap:anywhere}
+.code{font-family:var(--f-display);font-weight:700;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:4px}
+.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.danger.armed{background:var(--danger);color:var(--surface)}
+.btn.block{width:100%;padding:13px;font-size:15px}
+.btn:disabled{opacity:.5;cursor:default}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:16px;color:var(--muted);text-align:center;font-size:14px}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;min-width:0}
+input,select,textarea{font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
+input[type=time],input[type=date]{min-height:44px}
+textarea{min-height:110px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;margin-bottom:6px}
+.hint{font-size:13px;color:var(--muted)}
+.err{font-size:13px;color:var(--danger);font-weight:600}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600}
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vitem{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);text-align:left;width:100%}
+.vitem.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.vitem .plate{font-size:14px}
+.vitem small{color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vitem .chk{color:var(--accent);font-weight:700;font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;font-weight:600;z-index:20;max-width:calc(100% - 32px);text-align:center}
+@media (max-width:380px){.row3{grid-template-columns:1fr 1fr}.row3 label:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <button class="plate" id="plate" aria-label="Escolher viatura"><span id="plateTxt">—</span><svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div class="month">
+      <button class="icon-btn" id="prev" aria-label="Mês anterior"><svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 id="monthTitle">—</h1>
+      <button class="icon-btn" id="next" aria-label="Mês seguinte"><svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <button class="icon-btn" id="openCfg" aria-label="Definições"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+
+  <!-- Viaturas -->
+  <section id="vehSec" hidden>
+    <h2>Viaturas</h2>
+    <div class="form">
+      <div class="vlist" id="vlist"></div>
+      <form id="vehForm" class="form" style="padding:0;border:0" novalidate>
+        <fieldset>
+          <legend id="vehFormTitle">Adicionar viatura</legend>
+          <div class="row3">
+            <label>Matrícula<input id="v_mat" placeholder="AA-00-BB" autocomplete="off" autocapitalize="characters"></label>
+            <label>Marca<input id="v_marca" autocomplete="off"></label>
+            <label>Modelo<input id="v_modelo" autocomplete="off"></label>
+          </div>
+        </fieldset>
+        <div class="err" id="vehErr" hidden></div>
+        <div class="row">
+          <button type="button" class="btn" id="vehNew">Limpar</button>
+          <button type="submit" class="btn primary" id="vehSave">Guardar viatura</button>
+        </div>
+        <button type="button" class="btn danger" id="vehDel" hidden>Apagar esta viatura</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Definições -->
+  <section id="cfgSec" hidden>
+    <h2>Definições</h2>
+    <form class="form" id="cfgForm">
+      <fieldset>
+        <legend>Trabalhador por defeito</legend>
+        <div class="row">
+          <label>UO<input id="c_uo" inputmode="numeric" autocomplete="off"></label>
+          <label>Número<input id="c_numero" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <label>Nome legível<input id="c_nome" autocomplete="off"></label>
+      </fieldset>
+      <button type="submit" class="btn primary">Guardar</button>
+    </form>
+    <div class="form" style="margin-top:12px">
+      <legend>Cópia de segurança</legend>
+      <div class="hint">Os registos ficam guardados só neste telemóvel. Guarde uma cópia de vez em quando (por exemplo no fim de cada mês), sobretudo antes de limpar o browser ou trocar de telemóvel.</div>
+      <div class="row">
+        <button type="button" class="btn" id="bkExport">Guardar cópia</button>
+        <button type="button" class="btn" id="bkImportBtn">Repor cópia</button>
+      </div>
+      <input type="file" id="bkImport" accept=".json,application/json" hidden>
+      <div class="hint" id="bkInfo"></div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><b id="sKm">0</b><span>km no mês</span></div>
+    <div class="stat"><b id="sDias">0</b><span>dias c/ registo</span></div>
+    <div class="stat"><b id="sLinhas">0/35</b><span>linhas usadas</span></div>
+  </div>
+
+  <section>
+    <div class="cal" id="cal" aria-label="Dias do mês"></div>
+    <div class="legend"><span class="l-done">Preenchido</span><span class="l-miss">Dia útil em falta</span></div>
+  </section>
+
+  <section>
+    <div class="dayhead"><h2 id="dayTitle">—</h2><small id="dayCount"></small></div>
+    <div class="list" id="dayList"></div>
+  </section>
+
+  <section id="formSec" hidden>
+    <h2 id="formTitle">Novo movimento</h2>
+    <form class="form" id="movForm" novalidate>
+      <div class="row">
+        <label>Data<input type="date" id="f_data"></label>
+        <label>Viatura<select id="f_mat"></select></label>
+      </div>
+      <fieldset>
+        <legend>Saída</legend>
+        <div class="row">
+          <label>Hora<input type="time" id="f_hs"></label>
+          <label>Kms<input id="f_ks" inputmode="numeric" autocomplete="off"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Chegada</legend>
+        <div class="row">
+          <label>Hora<input type="time" id="f_hc"></label>
+          <label>Kms<input id="f_kc" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <div class="hint" id="distHint"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Trabalhador</legend>
+        <div class="row">
+          <label>UO<input id="f_uo" inputmode="numeric" autocomplete="off"></label>
+          <label>Número<input id="f_num" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <label>Nome legível<input id="f_nome" list="dlNomes" autocomplete="off"></label>
+      </fieldset>
+      <label>Itinerário<input id="f_itin" list="dlItin" placeholder="ex.: Mdl - Pesqueira - Mdl" autocomplete="off"></label>
+      <fieldset>
+        <legend>Atividade</legend>
+        <label>Código<select id="f_cod"></select></label>
+        <label>Especificação do serviço<input id="f_esp" list="dlEsp" autocomplete="off"></label>
+      </fieldset>
+      <div class="err" id="formErr" hidden></div>
+      <div class="row">
+        <button type="button" class="btn" id="formCancel">Cancelar</button>
+        <button type="submit" class="btn primary" id="formSave">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Anomalias observadas na viatura</h2>
+    <div class="form">
+      <label>Uma linha por anomalia (máx. 7 no mapa)<textarea id="anom" placeholder="Sem anomalias registadas neste mês"></textarea></label>
+      <button class="btn" id="anomSave" disabled>Guardar anomalias</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mapa do mês</h2>
+    <div class="form">
+      <div class="hint" id="expHint">Gera o Modelo 33 (MUV) em Excel da viatura escolhida, pronto a imprimir e assinar.</div>
+      <div class="warnbox" id="expWarn" hidden></div>
+      <button class="btn primary block" id="exportBtn">Descarregar Excel do mês</button>
+      <div class="err" id="expErr" hidden></div>
+    </div>
+  </section>
+
+  <div class="hint" id="installHint" hidden style="text-align:center"></div>
+</main>
+</div>
+
+<datalist id="dlItin"></datalist>
+<datalist id="dlEsp"></datalist>
+<datalist id="dlNomes"></datalist>
+<div class="toast" id="toast" hidden></div>
+
+<script src="exceljs.min.js" defer></script>
+<script>
+const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const DSEM=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+const CODIGOS=[["A1","Atividades correntes do serviço"],["A2","MAR 2020 - Assistência Técnica"],["A3","PDR 2020 - Assistência Técnica"],["A4","RICA - Contabilidades agrícolas"],["A5","VITIS - Sergude"],["A6","VITIS - Sta. Bárbara"],["A7","POCI - SAMA"],["A8","ITI Montesinho-Nogueira"],["A9","ITI Douro Internacional, Sabor, Maçãs e Vale do Coa"],["A10","ITI Peneda-Gerês"],["A0","Outro projeto (indicar na especificação)"]];
+const MAX_LINHAS=35, KEY="muv.dados.v1";
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+const fmtKm=n=>(n==null||n==="")?"—":Number(n).toLocaleString("pt-PT");
+const cap=s=>s[0].toUpperCase()+s.slice(1);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const normMat=s=>{let m=String(s||"").toUpperCase().replace(/[\s.]+/g,"").trim();if(/^[A-Z0-9]{6}$/.test(m))m=m.replace(/^(..)(..)(..)$/,"$1-$2-$3");return m};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const now=new Date();
+const todayISO=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+
+/* ---------- dados guardados no telemóvel ---------- */
+function defaults(){return{
+  viaturas:{"CA-90-RG":{marca:"KGM",modelo:"MUSSO"}},
+  ativa:"CA-90-RG",
+  trabalhador:{uo:"232000",numero:"5869",nome:"Nuno Chalaça"},
+  movimentos:[{id:"m-2026-11-02-a",matricula:"CA-90-RG",mes:"2026-11",dia:2,hSaida:"08:30",kmSaida:27608,hChegada:"16:30",kmChegada:27778,uo:"232000",numero:"5869",nome:"Nuno Chalaça",itinerario:"Mdl - Pesqueira - Mdl",codigo:"A1",especificacao:"Vitis",criado:1793635200000}],
+  anomalias:{}
+}}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
+if(!S||!S.viaturas)S=defaults();
+let storageOk=true;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));storageOk=true}catch(e){storageOk=false;toast("Não foi possível guardar neste dispositivo. Verifique o espaço livre.")}}
+if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
+
+let curY=now.getFullYear(), curM=now.getMonth(), selDay=now.getDate(), editingId=null, editingVeh=null;
+
+$("f_cod").innerHTML=CODIGOS.map(([c,d])=>`<option value="${c}">${c} — ${d}</option>`).join("");
+
+const mesKey=(y=curY,m=curM)=>`${y}-${pad(m+1)}`;
+const anomKey=()=>`${S.ativa}|${mesKey()}`;
+const sortKey=e=>`${e.mes}-${pad(e.dia)} ${e.hSaida||""}`;
+const vehMovs=mat=>S.movimentos.filter(e=>e.matricula===mat);
+const monthEntries=()=>vehMovs(S.ativa).filter(e=>e.mes===mesKey()).sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+
+function render(){
+  const mats=Object.keys(S.viaturas);
+  if(!S.viaturas[S.ativa])S.ativa=mats[0]||"";
+  $("plateTxt").textContent=S.ativa||"Sem viatura";
+  $("monthTitle").innerHTML=`<span class="full">${cap(MESES[curM])}</span><span class="abbr">${cap(MESES[curM].slice(0,3))}</span> <small>${curY}</small>`;
+  const list=monthEntries();
+  $("sKm").textContent=fmtKm(list.reduce((s,e)=>s+Math.max(0,(+e.kmChegada||0)-(+e.kmSaida||0)),0));
+  $("sDias").textContent=new Set(list.map(e=>e.dia)).size;
+  $("sLinhas").textContent=`${list.length}/${MAX_LINHAS}`;
+  const first=new Date(curY,curM,1), nDays=new Date(curY,curM+1,0).getDate(), lead=(first.getDay()+6)%7;
+  let h=["seg","ter","qua","qui","sex","sáb","dom"].map(d=>`<div class="wd">${d}</div>`).join("");
+  for(let i=0;i<lead;i++)h+="<div></div>";
+  for(let d=1;d<=nDays;d++){
+    const iso=`${curY}-${pad(curM+1)}-${pad(d)}`, wd=new Date(curY,curM,d).getDay(), n=list.filter(e=>e.dia===d).length;
+    const cls=["day"];
+    if(n)cls.push("done");else if(iso>todayISO)cls.push("future");else if(wd===0||wd===6)cls.push("weekend");else cls.push("missing");
+    if(iso===todayISO)cls.push("today"); if(d===selDay)cls.push("sel");
+    h+=`<button class="${cls.join(" ")}" data-d="${d}" aria-label="${d} ${MESES[curM]}${n?`, ${n} movimento(s)`:""}">${d}<span class="dots">${"<i></i>".repeat(Math.min(n,3))}</span></button>`;
+  }
+  $("cal").innerHTML=h;
+  const dt=new Date(curY,curM,selDay);
+  $("dayTitle").textContent=`${cap(DSEM[dt.getDay()])}, ${selDay} de ${MESES[curM]}`;
+  const dl=list.filter(e=>e.dia===selDay);
+  $("dayCount").textContent=dl.length?`${dl.length} movimento${dl.length>1?"s":""}`:"";
+  let lh=dl.map(e=>{const dist=(+e.kmChegada||0)-(+e.kmSaida||0);return `<article class="mov">
+      <div class="times">
+        <div><div class="t">${esc(e.hSaida||"—")}</div><div class="k">${fmtKm(e.kmSaida)} km</div></div>
+        <span class="dist">${dist>=0?fmtKm(dist):"?"} km</span>
+        <div><div class="t">${esc(e.hChegada||"—")}</div><div class="k">${fmtKm(e.kmChegada)} km</div></div>
+      </div>
+      <div class="meta">${esc(e.itinerario||"Sem itinerário")}</div>
+      <div class="meta"><span class="code">${esc(e.codigo||"—")}</span>${esc(e.especificacao||"")}</div>
+      <div class="meta hint">${esc(e.nome||"")}${e.numero?` · n.º ${esc(e.numero)}`:""}${e.uo?` · UO ${esc(e.uo)}`:""}</div>
+      <div class="actions"><button class="btn danger" data-del="${e.id}">Apagar</button><button class="btn" data-edit="${e.id}">Editar</button></div>
+    </article>`}).join("");
+  if(!dl.length)lh=`<div class="empty">${S.ativa?"Sem movimentos neste dia.":"Adicione primeiro uma viatura (toque na matrícula, em cima)."}</div>`;
+  lh+=`<button class="btn primary block" id="addBtn" ${S.ativa?"":"disabled"}>${dl.length?"Adicionar outro movimento":"Adicionar movimento"}</button>`;
+  $("dayList").innerHTML=lh;
+  $("addBtn").onclick=()=>openForm(null);
+  const a=$("anom"); if(!a.dataset.dirty){a.value=S.anomalias[anomKey()]||"";$("anomSave").disabled=true}
+  const w=$("expWarn");
+  if(list.length>MAX_LINHAS){w.hidden=false;w.textContent=`Este mês tem ${list.length} linhas e o mapa tem ${MAX_LINHAS}. As restantes ${list.length-MAX_LINHAS} vão numa folha "Continuação" no mesmo ficheiro.`}else w.hidden=true;
+  const uniq=f=>[...new Set(S.movimentos.map(f).filter(Boolean))].slice(-60);
+  $("dlItin").innerHTML=uniq(e=>e.itinerario).map(v=>`<option value="${esc(v)}">`).join("");
+  $("dlEsp").innerHTML=uniq(e=>e.especificacao).map(v=>`<option value="${esc(v)}">`).join("");
+  $("dlNomes").innerHTML=uniq(e=>e.nome).map(v=>`<option value="${esc(v)}">`).join("");
+  if(!$("vehSec").hidden)renderVeh();
+}
+
+$("cal").addEventListener("click",e=>{const b=e.target.closest("[data-d]");if(!b)return;selDay=+b.dataset.d;closeForm();render()});
+$("dayList").addEventListener("click",e=>{
+  const ed=e.target.closest("[data-edit]"); if(ed){openForm(S.movimentos.find(x=>x.id===ed.dataset.edit));return}
+  const del=e.target.closest("[data-del]"); if(!del)return;
+  if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="Confirmar apagar";setTimeout(()=>{if(del.isConnected){del.classList.remove("armed");del.textContent="Apagar"}},4000);return}
+  S.movimentos=S.movimentos.filter(x=>x.id!==del.dataset.del);save();render();toast("Movimento apagado");
+});
+function shiftMonth(d){curM+=d;if(curM<0){curM=11;curY--}if(curM>11){curM=0;curY++}
+  selDay=(curY===now.getFullYear()&&curM===now.getMonth())?now.getDate():Math.min(selDay,new Date(curY,curM+1,0).getDate());
+  $("anom").dataset.dirty="";closeForm();render()}
+$("prev").onclick=()=>shiftMonth(-1);$("next").onclick=()=>shiftMonth(1);
+
+/* ---------- movimento ---------- */
+function lastKmBefore(mat,iso,hora){
+  const key=`${iso} ${hora||"99:99"}`;let best=null;
+  for(const e of vehMovs(mat)){const k=sortKey(e);if(k<key&&(!best||k>sortKey(best)))best=e}
+  return best?best.kmChegada:"";
+}
+function fillMatSelect(sel){$("f_mat").innerHTML=Object.keys(S.viaturas).map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");$("f_mat").value=sel}
+function openForm(e){
+  editingId=e?e.id:null;
+  $("formTitle").textContent=e?"Editar movimento":"Novo movimento";
+  const iso=e?`${e.mes}-${pad(e.dia)}`:`${curY}-${pad(curM+1)}-${pad(selDay)}`;
+  const T=S.trabalhador||{};
+  fillMatSelect(e?e.matricula:S.ativa);
+  $("f_data").value=iso;
+  $("f_hs").value=e?.hSaida||"";
+  $("f_ks").value=e?(e.kmSaida??""):lastKmBefore(S.ativa,iso);
+  $("f_hc").value=e?.hChegada||"";
+  $("f_kc").value=e?(e.kmChegada??""):"";
+  $("f_uo").value=e?(e.uo??""):(T.uo??"");
+  $("f_num").value=e?(e.numero??""):(T.numero??"");
+  $("f_nome").value=e?(e.nome??""):(T.nome??"");
+  $("f_itin").value=e?.itinerario||"";
+  $("f_cod").value=e?.codigo||"A1";
+  $("f_esp").value=e?.especificacao||"";
+  $("formErr").hidden=true;updDist();
+  $("formSec").hidden=false;$("formSec").scrollIntoView({block:"start"});
+}
+function closeForm(){$("formSec").hidden=true;editingId=null}
+$("formCancel").onclick=closeForm;
+function updDist(){const a=+$("f_ks").value,b=+$("f_kc").value;$("distHint").textContent=($("f_ks").value&&$("f_kc").value)?(b>=a?`Percorridos: ${fmtKm(b-a)} km`:"Os km de chegada são inferiores aos de saída."):""}
+$("f_ks").oninput=updDist;$("f_kc").oninput=updDist;
+const refreshKm=()=>{if(!editingId){$("f_ks").value=lastKmBefore($("f_mat").value,$("f_data").value);updDist()}};
+$("f_data").onchange=refreshKm;$("f_mat").onchange=refreshKm;
+
+$("movForm").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  const err=m=>{$("formErr").textContent=m;$("formErr").hidden=false};
+  const iso=$("f_data").value; if(!iso)return err("Indique a data.");
+  const hs=$("f_hs").value,hc=$("f_hc").value,ks=$("f_ks").value.trim(),kc=$("f_kc").value.trim();
+  if(!hs||!hc)return err("Preencha as horas de saída e de chegada.");
+  if(!/^\d+$/.test(ks)||!/^\d+$/.test(kc))return err("Os quilómetros devem ser números inteiros.");
+  if(+kc<+ks)return err("Os km de chegada não podem ser inferiores aos de saída.");
+  const [y,m,d]=iso.split("-");
+  const data={matricula:$("f_mat").value,mes:`${y}-${m}`,dia:+d,hSaida:hs,kmSaida:+ks,hChegada:hc,kmChegada:+kc,
+    uo:$("f_uo").value.trim(),numero:$("f_num").value.trim(),nome:$("f_nome").value.trim(),
+    itinerario:$("f_itin").value.trim(),codigo:$("f_cod").value,especificacao:$("f_esp").value.trim()};
+  if(editingId){const i=S.movimentos.findIndex(x=>x.id===editingId);S.movimentos[i]={...S.movimentos[i],...data}}
+  else S.movimentos.push({id:uid(),criado:Date.now(),...data});
+  S.ativa=data.matricula;save();
+  curY=+y;curM=+m-1;selDay=+d;closeForm();render();if(storageOk)toast("Movimento guardado");
+});
+
+/* ---------- anomalias ---------- */
+$("anom").addEventListener("input",()=>{$("anom").dataset.dirty="1";$("anomSave").disabled=false});
+$("anomSave").onclick=()=>{const v=$("anom").value;if(v.trim())S.anomalias[anomKey()]=v;else delete S.anomalias[anomKey()];save();$("anom").dataset.dirty="";$("anomSave").disabled=true;toast("Anomalias guardadas")};
+
+/* ---------- viaturas ---------- */
+function renderVeh(){
+  const mats=Object.keys(S.viaturas).sort();
+  $("vlist").innerHTML=mats.length?mats.map(m=>{const v=S.viaturas[m];const n=vehMovs(m).length;return `<button type="button" class="vitem ${m===S.ativa?"on":""}" data-v="${esc(m)}"><span class="plate">${esc(m)}</span><small>${esc([v.marca,v.modelo].filter(Boolean).join(" "))} · ${n} mov.</small>${m===S.ativa?'<span class="chk">Ativa</span>':""}</button>`}).join(""):`<div class="empty">Ainda não há viaturas.</div>`;
+}
+function loadVehForm(m){
+  editingVeh=m;const v=m?S.viaturas[m]:{};
+  $("vehFormTitle").textContent=m?`Editar ${m}`:"Adicionar viatura";
+  $("v_mat").value=m||"";$("v_marca").value=v.marca||"";$("v_modelo").value=v.modelo||"";
+  $("vehDel").hidden=!m;$("vehDel").classList.remove("armed");$("vehDel").textContent="Apagar esta viatura";$("vehErr").hidden=true;
+}
+$("plate").onclick=()=>{const s=$("vehSec");if(!s.hidden){s.hidden=true;return}$("cfgSec").hidden=true;renderVeh();loadVehForm(S.ativa||null);s.hidden=false;s.scrollIntoView({block:"start"})};
+$("vlist").addEventListener("click",e=>{const b=e.target.closest("[data-v]");if(!b)return;S.ativa=b.dataset.v;save();$("anom").dataset.dirty="";loadVehForm(S.ativa);render();toast(`Viatura ativa: ${S.ativa}`)});
+$("vehNew").onclick=()=>loadVehForm(null);
+$("vehForm").addEventListener("submit",ev=>{
+  ev.preventDefault();
+  const mat=normMat($("v_mat").value), err=m=>{$("vehErr").textContent=m;$("vehErr").hidden=false};
+  if(!mat)return err("Indique a matrícula.");
+  if(mat!==editingVeh&&S.viaturas[mat])return err("Essa matrícula já existe na lista.");
+  const v={marca:$("v_marca").value.trim(),modelo:$("v_modelo").value.trim()};
+  if(editingVeh&&mat!==editingVeh){ // mudar matrícula: leva os movimentos e anomalias
+    delete S.viaturas[editingVeh];
+    S.movimentos.forEach(x=>{if(x.matricula===editingVeh)x.matricula=mat});
+    for(const k of Object.keys(S.anomalias))if(k.startsWith(editingVeh+"|")){S.anomalias[mat+k.slice(editingVeh.length)]=S.anomalias[k];delete S.anomalias[k]}
+    if(S.ativa===editingVeh)S.ativa=mat;
+  }
+  S.viaturas[mat]=v; if(!editingVeh)S.ativa=mat;
+  save();loadVehForm(mat);render();toast("Viatura guardada");
+});
+$("vehDel").onclick=()=>{
+  const b=$("vehDel"),m=editingVeh;if(!m)return;
+  const n=vehMovs(m).length;
+  if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent=n?`Confirmar: apagar ${m} e ${n} movimento(s)`:`Confirmar: apagar ${m}`;return}
+  delete S.viaturas[m];S.movimentos=S.movimentos.filter(x=>x.matricula!==m);
+  for(const k of Object.keys(S.anomalias))if(k.startsWith(m+"|"))delete S.anomalias[k];
+  if(S.ativa===m)S.ativa=Object.keys(S.viaturas)[0]||"";
+  save();loadVehForm(null);render();toast("Viatura apagada");
+};
+
+/* ---------- definições e cópia ---------- */
+$("openCfg").onclick=()=>{const s=$("cfgSec");if(!s.hidden){s.hidden=true;return}$("vehSec").hidden=true;
+  const T=S.trabalhador||{};$("c_uo").value=T.uo||"";$("c_numero").value=T.numero||"";$("c_nome").value=T.nome||"";
+  $("bkInfo").textContent=`${S.movimentos.length} movimentos e ${Object.keys(S.viaturas).length} viatura(s) guardados neste telemóvel.`;
+  s.hidden=false;s.scrollIntoView({block:"start"})};
+$("cfgForm").addEventListener("submit",ev=>{ev.preventDefault();S.trabalhador={uo:$("c_uo").value.trim(),numero:$("c_numero").value.trim(),nome:$("c_nome").value.trim()};save();$("cfgSec").hidden=true;toast("Definições guardadas")});
+
+async function giveFile(blob,name){
+  const file=new File([blob],name,{type:blob.type});
+  if(navigator.canShare&&navigator.canShare({files:[file]})&&/Android|iPhone|iPad/i.test(navigator.userAgent)){
+    try{await navigator.share({files:[file],title:name});return}catch(e){if(e.name==="AbortError")return}
+  }
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+$("bkExport").onclick=()=>giveFile(new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),`MUV_copia_${todayISO}.json`);
+$("bkImportBtn").onclick=()=>$("bkImport").click();
+$("bkImport").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!d.viaturas||!Array.isArray(d.movimentos))throw 0;
+    // junta à informação existente sem duplicar
+    Object.assign(S.viaturas,d.viaturas);const ids=new Set(S.movimentos.map(x=>x.id));
+    d.movimentos.forEach(x=>{if(!ids.has(x.id))S.movimentos.push(x)});Object.assign(S.anomalias,d.anomalias||{});
+    if(d.trabalhador&&!S.trabalhador?.nome)S.trabalhador=d.trabalhador;
+    save();render();$("bkInfo").textContent=`Cópia reposta: ${S.movimentos.length} movimentos no total.`;toast("Cópia reposta");
+  }catch(_){toast("Esse ficheiro não é uma cópia válida da app MUV.")}
+  e.target.value="";
+};
+
+/* ---------- Excel ---------- */
+function horaFrac(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return (a*60+b)/1440}
+function numOr(v){return /^\d+$/.test(String(v??"").trim())?Number(v):(v||null)}
+$("exportBtn").onclick=async()=>{
+  const btn=$("exportBtn"),er=$("expErr");er.hidden=true;btn.disabled=true;btn.textContent="A gerar…";
+  try{
+    if(!S.ativa)throw new Error("Escolha primeiro uma viatura.");
+    if(!window.ExcelJS)throw new Error("A ferramenta de Excel ainda não carregou. Tente de novo dentro de segundos.");
+    const r=await fetch("modelo.xlsx");if(!r.ok)throw new Error("Não foi possível abrir o modelo do mapa.");
+    const wb=new ExcelJS.Workbook();await wb.xlsx.load(await r.arrayBuffer());
+    const ws=wb.worksheets[0], v=S.viaturas[S.ativa]||{};
+    ws.name=MESES[curM].toUpperCase();
+    ws.getCell("D5").value=S.ativa;ws.getCell("G5").value=v.marca||"";ws.getCell("J5").value=v.modelo||"";
+    ws.getCell("R5").value=new Date(Date.UTC(curY,curM,1));
+    for(let row=9;row<9+MAX_LINHAS;row++)for(const c of[2,3,4,5,6,7,8,9,13,17,18])ws.getCell(row,c).value=null;
+    const list=monthEntries();
+    list.slice(0,MAX_LINHAS).forEach((e,i)=>{const row=9+i;
+      const set=(c,val,fmt)=>{const cell=ws.getCell(row,c);cell.value=val;cell.alignment={horizontal:"center",vertical:"middle"};if(fmt)cell.numFmt=fmt};
+      set(2,e.dia);set(3,horaFrac(e.hSaida),"h:mm");set(4,numOr(e.kmSaida));set(5,horaFrac(e.hChegada),"h:mm");set(6,numOr(e.kmChegada));
+      set(7,numOr(e.uo));set(8,numOr(e.numero));set(9,e.nome||null);set(13,e.itinerario||null);set(17,e.codigo||null);set(18,e.especificacao||null)});
+    const lines=(S.anomalias[anomKey()]||"").split("\n").map(s=>s.trim()).filter(Boolean);
+    lines.slice(0,7).forEach((t,i)=>{ws.getCell(52+i,2).value=t});
+    if(lines.length>7)ws.getCell(58,2).value=lines.slice(6).join(" · ");
+    if(list.length>MAX_LINHAS){
+      const c=wb.addWorksheet("Continuação",{pageSetup:{orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0}});
+      c.addRow(["Dia","Saída Hora","Saída Kms","Chegada Hora","Chegada Kms","UO","Número","Nome Legível","Itinerário","Código","Especificação do serviço"]).font={bold:true};
+      list.slice(MAX_LINHAS).forEach(e=>{const rw=c.addRow([e.dia,horaFrac(e.hSaida),numOr(e.kmSaida),horaFrac(e.hChegada),numOr(e.kmChegada),numOr(e.uo),numOr(e.numero),e.nome,e.itinerario,e.codigo,e.especificacao]);rw.getCell(2).numFmt="h:mm";rw.getCell(4).numFmt="h:mm"});
+      c.columns.forEach((col,i)=>col.width=[6,9,10,10,10,9,9,22,26,8,28][i]);
+      c.eachRow(rw=>rw.eachCell({includeEmpty:true},cell=>{cell.border={top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}}));
+    }
+    const buf=await wb.xlsx.writeBuffer();
+    await giveFile(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
+      `Modelo_33_MapaViaturas_${cap(MESES[curM])}_${curY}_${S.ativa.replace(/[^\w-]/g,"")}.xlsx`);
+  }catch(e){er.textContent=e.message||"Ocorreu um erro ao gerar o Excel.";er.hidden=false}
+  finally{btn.disabled=false;btn.textContent="Descarregar Excel do mês"}
+};
+
+/* ---------- instalação offline ---------- */
+if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+if(!standalone){const ih=$("installHint");ih.hidden=false;
+  ih.textContent=/iPhone|iPad/i.test(navigator.userAgent)?"Para instalar: no Safari toque em Partilhar e depois em “Adicionar ao ecrã principal”.":"Para instalar: no menu do Chrome (⋮) toque em “Instalar aplicação” ou “Adicionar ao ecrã principal”."}
+
+save();render();
+</script>
+</body>
+</html>
