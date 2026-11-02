@@ -13,11 +13,11 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <style>
-/* Layout: uma coluna estreita para telemóvel — barra do mês fixa, calendário, painel do dia, formulário. */
+/* Layout: uma coluna estreita para telemóvel — barra do mês fixa, avisos, calendário, painel do dia, formulário, resumo. */
 :root{
   --bg:#f3f5f2; --surface:#ffffff; --line:#d9dfd6; --fg:#1c2620; --muted:#5f6c63;
   --accent:#1f5d3c; --accent-ink:#ffffff; --accent-soft:#e2eee6;
-  --warn:#a86400; --warn-soft:#fbf0dd; --danger:#b3261e;
+  --warn:#a86400; --warn-soft:#fbf0dd; --danger:#b3261e; --info:#2f5f8a; --info-soft:#e3edf6;
   --f-display:"Barlow Semi Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
   --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
@@ -25,7 +25,7 @@
 @media (prefers-color-scheme:dark){:root{
   --bg:#121814; --surface:#1a221d; --line:#2d3a32; --fg:#e4ebe5; --muted:#97a69c;
   --accent:#6fc196; --accent-ink:#0d1a12; --accent-soft:#1f3328;
-  --warn:#e2a64a; --warn-soft:#33281a; --danger:#f08a80; color-scheme:dark}}
+  --warn:#e2a64a; --warn-soft:#33281a; --danger:#f08a80; --info:#8db8e0; --info-soft:#1c2a36; color-scheme:dark}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45;padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -37,20 +37,32 @@ header .wrap{display:flex;align-items:center;gap:8px;padding-block:10px}
 .plate svg{width:14px;height:14px}
 .month{flex:1;display:flex;align-items:center;justify-content:center;gap:2px;min-width:0}
 .month h1{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0;text-align:center;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.month h1 small{font-size:15px;color:var(--muted);font-weight:500}
+.month .abbr{display:none}
 button{font:inherit;color:inherit;cursor:pointer}
 .icon-btn{background:none;border:0;width:36px;height:40px;border-radius:8px;display:grid;place-items:center;flex:none}
 .icon-btn:hover{background:var(--accent-soft)}
 svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 main{display:flex;flex-direction:column;gap:20px;padding-block:16px 40px}
+section{scroll-margin-top:calc(70px + env(safe-area-inset-top,0px))}
+section h2{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0 0 10px}
+.notice{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.notice.warn{background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn)}
+.notice.info{background:var(--info-soft);color:var(--fg);border:1px solid var(--info)}
+.notice b{font-weight:700}
+.notice .actions{justify-content:flex-start}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .stat b{display:block;font-family:var(--f-display);font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat b.warnnum{color:var(--warn)}
 .stat span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal .wd{font-size:11px;text-align:center;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:2px}
-.day{aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-family:var(--f-display);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
+.day{position:relative;aspect-ratio:1/1;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-family:var(--f-display);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0}
 .day.weekend{background:transparent;color:var(--muted);font-weight:500}
+.day.holiday{background:transparent;color:var(--muted);font-weight:500;border-style:dashed}
+.day.off{background:repeating-linear-gradient(135deg,var(--surface) 0 5px,var(--bg) 5px 10px);color:var(--muted)}
 .day.missing{border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
 .day.done{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .day.future{color:var(--muted);font-weight:500}
@@ -58,37 +70,50 @@ main{display:flex;flex-direction:column;gap:20px;padding-block:16px 40px}
 .day.sel{outline:3px solid var(--fg);outline-offset:-3px}
 .day .dots{display:flex;gap:2px;height:5px;margin-top:2px}
 .day .dots i{width:4px;height:4px;border-radius:50%;background:currentColor}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:8px}
+.day .flag{position:absolute;top:2px;right:3px;width:8px;height:8px;border-radius:50%;background:var(--warn);border:1.5px solid var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted);margin-top:8px}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
 .legend .l-done::before{background:var(--accent);border-color:var(--accent)}
 .legend .l-miss::before{background:var(--warn-soft);border-color:var(--warn)}
-.month .abbr{display:none}@media (max-width:420px){.month .full{display:none}.month .abbr{display:inline}.plate svg{display:none}header .wrap{gap:4px}.month h1{font-size:19px;overflow:visible}}
-section{scroll-margin-top:calc(70px + env(safe-area-inset-top,0px))}
-.month h1 small{font-size:15px;color:var(--muted);font-weight:500}
-section h2{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0 0 10px}
+.legend .l-off::before{background:repeating-linear-gradient(135deg,var(--surface) 0 2px,var(--line) 2px 4px)}
+.legend .l-hol::before{border-style:dashed;border-color:var(--muted)}
 .dayhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .dayhead small{color:var(--muted)}
+.daytag{display:inline-block;font-size:12px;font-weight:600;border-radius:20px;padding:2px 9px;background:var(--bg);border:1px solid var(--line);color:var(--muted);margin-bottom:10px}
 .list{display:flex;flex-direction:column;gap:10px}
 .mov{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.mov.gap{border-color:var(--warn)}
 .mov .times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
 .mov .times div:last-child{text-align:right}
 .mov .t{font-family:var(--f-display);font-size:20px;font-weight:600;line-height:1}
 .mov .k{font-size:13px;color:var(--muted)}
 .dist{font-family:var(--f-display);font-weight:600;font-size:14px;background:var(--accent-soft);color:var(--accent);border-radius:20px;padding:2px 9px;white-space:nowrap}
 .mov .meta{font-size:14px;overflow-wrap:anywhere}
+.mov .gapmsg{font-size:13px;font-weight:600;color:var(--warn);background:var(--warn-soft);border-radius:6px;padding:6px 8px}
+.mov .part{font-size:12px;font-weight:600;color:var(--info)}
 .code{font-family:var(--f-display);font-weight:700;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:4px}
 .actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 14px;font-weight:600;font-size:14px}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.danger{color:var(--danger);border-color:var(--danger)}
 .btn.danger.armed{background:var(--danger);color:var(--surface)}
+.btn.ghost{background:transparent}
 .btn.block{width:100%;padding:13px;font-size:15px}
 .btn:disabled{opacity:.5;cursor:default}
+.repeat{display:flex;flex-direction:column;gap:6px}
+.repeat .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.chip{display:flex;align-items:center;gap:8px;text-align:left;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;font-size:14px}
+.chip svg{flex:none;width:18px;height:18px;color:var(--accent)}
+.chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.offbox{display:flex;gap:8px;align-items:stretch}
+.offbox select{flex:1}
 .empty{border:1px dashed var(--line);border-radius:10px;padding:16px;color:var(--muted);text-align:center;font-size:14px}
 .form{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;min-width:0}
+label.check{flex-direction:row;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:14px;color:var(--fg);font-weight:500}
+label.check input{width:20px;height:20px;flex:none}
 input,select,textarea{font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;min-width:0;text-transform:none;letter-spacing:0}
 input[type=time],input[type=date]{min-height:44px}
 textarea{min-height:110px;resize:vertical}
@@ -96,15 +121,37 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
 fieldset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
 legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;margin-bottom:6px}
 .hint{font-size:13px;color:var(--muted)}
+.hint.warn{color:var(--warn);font-weight:600}
 .err{font-size:13px;color:var(--danger);font-weight:600}
 .warnbox{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;font-weight:600}
+.parts{display:flex;flex-direction:column;gap:10px}
+.partbox{border:1px solid var(--line);border-left:3px solid var(--info);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.partbox .ph{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--info)}
+.partbox .ph button{border:0;background:none;color:var(--danger);font-weight:600;font-size:13px;padding:4px}
+.pgrid{display:grid;grid-template-columns:1fr 90px;gap:8px}
 .vlist{display:flex;flex-direction:column;gap:6px}
 .vitem{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);text-align:left;width:100%}
 .vitem.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .vitem .plate{font-size:14px}
 .vitem small{color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vitem .chk{color:var(--accent);font-weight:700;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.seg button{border:0;background:var(--surface);padding:7px 14px;font-weight:600;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:44px 1fr auto;gap:4px 10px;align-items:center;font-size:13px}
+.bar .c{font-family:var(--f-display);font-weight:700;font-size:15px}
+.bar .d{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bar .v{font-family:var(--f-display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;text-align:right}
+.bar .track{grid-column:2/4;height:8px;background:var(--bg);border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:4px}
+.total{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;margin-top:2px;font-weight:600}
+.total b{font-family:var(--f-display);font-size:17px;font-variant-numeric:tabular-nums}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:20px;font-size:14px;font-weight:600;z-index:20;max-width:calc(100% - 32px);text-align:center}
+.update{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--info);color:#fff;padding:8px 8px 8px 16px;border-radius:24px;font-size:14px;font-weight:600;z-index:21;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px)}
+.update button{border:0;background:#fff;color:var(--info);border-radius:18px;padding:7px 14px;font-weight:700}
+.ver{font-size:12px;color:var(--muted);text-align:center}
+@media (max-width:420px){.month .full{display:none}.month .abbr{display:inline}.plate svg{display:none}header .wrap{gap:4px}.month h1{font-size:19px;overflow:visible}}
 @media (max-width:380px){.row3{grid-template-columns:1fr 1fr}.row3 label:first-child{grid-column:1/-1}}
 </style>
 </head>
@@ -123,6 +170,8 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
 
 <div class="wrap">
 <main>
+
+  <div id="notices" class="list"></div>
 
   <!-- Viaturas -->
   <section id="vehSec" hidden>
@@ -160,11 +209,18 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
         </div>
         <label>Nome legível<input id="c_nome" autocomplete="off"></label>
       </fieldset>
+      <fieldset>
+        <legend>Feriados</legend>
+        <div class="hint">Os feriados nacionais são reconhecidos automaticamente e não contam como dias em falta.</div>
+        <label>Feriado municipal (dia/mês)<input id="c_fmun" placeholder="ex.: 25/07" inputmode="numeric" autocomplete="off"></label>
+        <label class="check"><input type="checkbox" id="c_carnaval"> Contar a terça-feira de Carnaval como feriado</label>
+      </fieldset>
+      <div class="err" id="cfgErr" hidden></div>
       <button type="submit" class="btn primary">Guardar</button>
     </form>
     <div class="form" style="margin-top:12px">
       <legend>Cópia de segurança</legend>
-      <div class="hint">Os registos ficam guardados só neste telemóvel. Guarde uma cópia de vez em quando (por exemplo no fim de cada mês), sobretudo antes de limpar o browser ou trocar de telemóvel.</div>
+      <div class="hint">Os registos ficam guardados só neste telemóvel. Guarde uma cópia no fim de cada mês, sobretudo antes de limpar o browser ou trocar de telemóvel.</div>
       <div class="row">
         <button type="button" class="btn" id="bkExport">Guardar cópia</button>
         <button type="button" class="btn" id="bkImportBtn">Repor cópia</button>
@@ -172,21 +228,23 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
       <input type="file" id="bkImport" accept=".json,application/json" hidden>
       <div class="hint" id="bkInfo"></div>
     </div>
+    <div class="ver" id="verInfo" style="margin-top:10px"></div>
   </section>
 
   <div class="stats">
     <div class="stat"><b id="sKm">0</b><span>km no mês</span></div>
-    <div class="stat"><b id="sDias">0</b><span>dias c/ registo</span></div>
+    <div class="stat"><b id="sFalta">0</b><span>dias em falta</span></div>
     <div class="stat"><b id="sLinhas">0/35</b><span>linhas usadas</span></div>
   </div>
 
   <section>
     <div class="cal" id="cal" aria-label="Dias do mês"></div>
-    <div class="legend"><span class="l-done">Preenchido</span><span class="l-miss">Dia útil em falta</span></div>
+    <div class="legend"><span class="l-done">Preenchido</span><span class="l-miss">Em falta</span><span class="l-off">Sem utilização</span><span class="l-hol">Feriado</span></div>
   </section>
 
-  <section>
+  <section id="daySec">
     <div class="dayhead"><h2 id="dayTitle">—</h2><small id="dayCount"></small></div>
+    <div id="dayTag"></div>
     <div class="list" id="dayList"></div>
   </section>
 
@@ -203,6 +261,7 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
           <label>Hora<input type="time" id="f_hs"></label>
           <label>Kms<input id="f_ks" inputmode="numeric" autocomplete="off"></label>
         </div>
+        <div class="hint" id="ksHint"></div>
       </fieldset>
       <fieldset>
         <legend>Chegada</legend>
@@ -223,15 +282,24 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
       <label>Itinerário<input id="f_itin" list="dlItin" placeholder="ex.: Mdl - Pesqueira - Mdl" autocomplete="off"></label>
       <fieldset>
         <legend>Atividade</legend>
-        <label>Código<select id="f_cod"></select></label>
+        <label>Código<select id="f_cod" class="codsel"></select></label>
         <label>Especificação do serviço<input id="f_esp" list="dlEsp" autocomplete="off"></label>
+        <div class="hint" id="mainKmHint" hidden></div>
       </fieldset>
+      <div class="parts" id="parts"></div>
+      <button type="button" class="btn ghost" id="addPart">+ Repartir km por outra atividade</button>
       <div class="err" id="formErr" hidden></div>
       <div class="row">
         <button type="button" class="btn" id="formCancel">Cancelar</button>
         <button type="submit" class="btn primary" id="formSave">Guardar</button>
       </div>
     </form>
+  </section>
+
+  <section>
+    <h2>Km por atividade</h2>
+    <div class="seg" role="group" aria-label="Período"><button id="rMes" aria-pressed="true">Este mês</button><button id="rAno" aria-pressed="false">Ano</button></div>
+    <div class="form" id="resumo"></div>
   </section>
 
   <section>
@@ -242,10 +310,10 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
     </div>
   </section>
 
-  <section>
+  <section id="expSec">
     <h2>Mapa do mês</h2>
     <div class="form">
-      <div class="hint" id="expHint">Gera o Modelo 33 (MUV) em Excel da viatura escolhida, pronto a imprimir e assinar.</div>
+      <div class="hint">Gera o Modelo 33 (MUV) em Excel da viatura escolhida, pronto a imprimir e assinar.</div>
       <div class="warnbox" id="expWarn" hidden></div>
       <button class="btn primary block" id="exportBtn">Descarregar Excel do mês</button>
       <div class="err" id="expErr" hidden></div>
@@ -260,12 +328,16 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
 <datalist id="dlEsp"></datalist>
 <datalist id="dlNomes"></datalist>
 <div class="toast" id="toast" hidden></div>
+<div class="update" id="updateBar" hidden><span>Nova versão disponível</span><button id="updateBtn">Atualizar</button></div>
 
 <script src="exceljs.min.js" defer></script>
 <script>
+const APP_VERSION="2 · novembro 2026";
 const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const DSEM=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
 const CODIGOS=[["A1","Atividades correntes do serviço"],["A2","MAR 2020 - Assistência Técnica"],["A3","PDR 2020 - Assistência Técnica"],["A4","RICA - Contabilidades agrícolas"],["A5","VITIS - Sergude"],["A6","VITIS - Sta. Bárbara"],["A7","POCI - SAMA"],["A8","ITI Montesinho-Nogueira"],["A9","ITI Douro Internacional, Sabor, Maçãs e Vale do Coa"],["A10","ITI Peneda-Gerês"],["A0","Outro projeto (indicar na especificação)"]];
+const CODDESC=Object.fromEntries(CODIGOS);
+const MOTIVOS=["Sem deslocação","Férias","Viatura na oficina","Viatura com outro serviço","Baixa / ausência","Teletrabalho","Outro"];
 const MAX_LINHAS=35, KEY="muv.dados.v1";
 const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,"0");
@@ -274,8 +346,10 @@ const cap=s=>s[0].toUpperCase()+s.slice(1);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const normMat=s=>{let m=String(s||"").toUpperCase().replace(/[\s.]+/g,"").trim();if(/^[A-Z0-9]{6}$/.test(m))m=m.replace(/^(..)(..)(..)$/,"$1-$2-$3");return m};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const isoOf=(y,m,d)=>`${y}-${pad(m+1)}-${pad(d)}`;
 const now=new Date();
-const todayISO=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+const todayISO=isoOf(now.getFullYear(),now.getMonth(),now.getDate());
+const ICON_REPEAT='<svg class="i" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
 
 /* ---------- dados guardados no telemóvel ---------- */
 function defaults(){return{
@@ -288,114 +362,221 @@ function defaults(){return{
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}
 if(!S||!S.viaturas)S=defaults();
+// campos novos da versão 2
+S.semUso=S.semUso||{};            // "MAT|AAAA-MM-DD" -> motivo
+S.entregues=S.entregues||{};      // "MAT|AAAA-MM" -> true
+S.opcoes=Object.assign({fmun:"",carnaval:true},S.opcoes||{});
+S.ultimaCopia=S.ultimaCopia||0;
 let storageOk=true;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));storageOk=true}catch(e){storageOk=false;toast("Não foi possível guardar neste dispositivo. Verifique o espaço livre.")}}
 if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
 
-let curY=now.getFullYear(), curM=now.getMonth(), selDay=now.getDate(), editingId=null, editingVeh=null;
+let curY=now.getFullYear(), curM=now.getMonth(), selDay=now.getDate(), editingId=null, editingVeh=null, template=null, resumoAno=false;
 
-$("f_cod").innerHTML=CODIGOS.map(([c,d])=>`<option value="${c}">${c} — ${d}</option>`).join("");
+const codOptions=CODIGOS.map(([c,d])=>`<option value="${c}">${c} — ${d}</option>`).join("");
+$("f_cod").innerHTML=codOptions;
 
 const mesKey=(y=curY,m=curM)=>`${y}-${pad(m+1)}`;
-const anomKey=()=>`${S.ativa}|${mesKey()}`;
-const sortKey=e=>`${e.mes}-${pad(e.dia)} ${e.hSaida||""}`;
+const anomKey=(mat=S.ativa,y=curY,m=curM)=>`${mat}|${mesKey(y,m)}`;
+const sortKey=e=>`${e.mes}-${pad(e.dia)} ${e.hSaida||""} ${String(e.kmSaida??"").padStart(9,"0")}`;
 const vehMovs=mat=>S.movimentos.filter(e=>e.matricula===mat);
-const monthEntries=()=>vehMovs(S.ativa).filter(e=>e.mes===mesKey()).sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+const entriesFor=(mat,y,m)=>vehMovs(mat).filter(e=>e.mes===mesKey(y,m)).sort((a,b)=>sortKey(a).localeCompare(sortKey(b)));
+const monthEntries=()=>entriesFor(S.ativa,curY,curM);
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+
+/* ---------- feriados ---------- */
+function pascoa(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da)}
+const _fer={};
+function feriados(y){
+  const ck=`${y}|${S.opcoes.fmun}|${S.opcoes.carnaval}`;if(_fer[ck])return _fer[ck];
+  const f={},add=(dt,n)=>{f[isoOf(dt.getFullYear(),dt.getMonth(),dt.getDate())]=n},P=pascoa(y),rel=d=>new Date(P.getFullYear(),P.getMonth(),P.getDate()+d);
+  [[0,1,"Ano Novo"],[3,25,"Dia da Liberdade"],[4,1,"Dia do Trabalhador"],[5,10,"Dia de Portugal"],[7,15,"Assunção de Nossa Senhora"],[9,5,"Implantação da República"],[10,1,"Dia de Todos-os-Santos"],[11,1,"Restauração da Independência"],[11,8,"Imaculada Conceição"],[11,25,"Natal"]].forEach(([m,d,n])=>add(new Date(y,m,d),n));
+  add(rel(-2),"Sexta-feira Santa");add(P,"Páscoa");add(rel(60),"Corpo de Deus");
+  if(S.opcoes.carnaval)add(rel(-47),"Carnaval");
+  const mm=/^(\d{1,2})\/(\d{1,2})$/.exec(S.opcoes.fmun||"");if(mm)add(new Date(y,+mm[2]-1,+mm[1]),"Feriado municipal");
+  return _fer[ck]=f;
+}
+const feriado=iso=>feriados(+iso.slice(0,4))[iso];
+function diaUtil(iso){const [y,m,d]=iso.split("-").map(Number),wd=new Date(y,m-1,d).getDay();return wd!==0&&wd!==6&&!feriado(iso)}
+function quintoDiaUtil(y,m){let n=0;for(let d=1;d<=31;d++){const iso=isoOf(y,m,d);if(diaUtil(iso)&&++n===5)return d}return 7}
+
+/* ---------- km: saltos entre movimentos ---------- */
+function kmGaps(mat){
+  const list=vehMovs(mat).sort((a,b)=>sortKey(a).localeCompare(sortKey(b))),gaps={};
+  for(let i=1;i<list.length;i++){const p=list[i-1],e=list[i];const g=(+e.kmSaida)-(+p.kmChegada);if(g!==0)gaps[e.id]={gap:g,prev:p}}
+  return gaps;
+}
+
+/* ---------- estado de cada dia ---------- */
+function dayState(mat,y,m,d,list){
+  const iso=isoOf(y,m,d),n=list.filter(e=>e.dia===d).length,wd=new Date(y,m,d).getDay();
+  if(n)return{cls:"done",n};
+  if(S.semUso[`${mat}|${iso}`])return{cls:"off",n:0};
+  if(feriado(iso))return{cls:"holiday",n:0};
+  if(iso>todayISO)return{cls:"future",n:0};
+  if(wd===0||wd===6)return{cls:"weekend",n:0};
+  return{cls:"missing",n:0};
+}
 
 function render(){
   const mats=Object.keys(S.viaturas);
   if(!S.viaturas[S.ativa])S.ativa=mats[0]||"";
   $("plateTxt").textContent=S.ativa||"Sem viatura";
   $("monthTitle").innerHTML=`<span class="full">${cap(MESES[curM])}</span><span class="abbr">${cap(MESES[curM].slice(0,3))}</span> <small>${curY}</small>`;
-  const list=monthEntries();
+  const list=monthEntries(), gaps=kmGaps(S.ativa);
   $("sKm").textContent=fmtKm(list.reduce((s,e)=>s+Math.max(0,(+e.kmChegada||0)-(+e.kmSaida||0)),0));
-  $("sDias").textContent=new Set(list.map(e=>e.dia)).size;
   $("sLinhas").textContent=`${list.length}/${MAX_LINHAS}`;
   const first=new Date(curY,curM,1), nDays=new Date(curY,curM+1,0).getDate(), lead=(first.getDay()+6)%7;
-  let h=["seg","ter","qua","qui","sex","sáb","dom"].map(d=>`<div class="wd">${d}</div>`).join("");
+  let h=["seg","ter","qua","qui","sex","sáb","dom"].map(d=>`<div class="wd">${d}</div>`).join(""), falta=0;
   for(let i=0;i<lead;i++)h+="<div></div>";
   for(let d=1;d<=nDays;d++){
-    const iso=`${curY}-${pad(curM+1)}-${pad(d)}`, wd=new Date(curY,curM,d).getDay(), n=list.filter(e=>e.dia===d).length;
-    const cls=["day"];
-    if(n)cls.push("done");else if(iso>todayISO)cls.push("future");else if(wd===0||wd===6)cls.push("weekend");else cls.push("missing");
-    if(iso===todayISO)cls.push("today"); if(d===selDay)cls.push("sel");
-    h+=`<button class="${cls.join(" ")}" data-d="${d}" aria-label="${d} ${MESES[curM]}${n?`, ${n} movimento(s)`:""}">${d}<span class="dots">${"<i></i>".repeat(Math.min(n,3))}</span></button>`;
+    const iso=isoOf(curY,curM,d), st=dayState(S.ativa,curY,curM,d,list);
+    if(st.cls==="missing")falta++;
+    const hasGap=list.some(e=>e.dia===d&&gaps[e.id]);
+    const cls=["day",st.cls]; if(iso===todayISO)cls.push("today"); if(d===selDay)cls.push("sel");
+    const fer=feriado(iso), motivo=S.semUso[`${S.ativa}|${iso}`];
+    h+=`<button class="${cls.join(" ")}" data-d="${d}" aria-label="${d} ${MESES[curM]}${st.n?`, ${st.n} movimento(s)`:""}${fer?`, ${fer}`:""}${motivo&&!st.n?`, ${motivo}`:""}${hasGap?", aviso de km":""}">${d}<span class="dots">${"<i></i>".repeat(Math.min(st.n,3))}</span>${hasGap?'<span class="flag"></span>':""}</button>`;
   }
   $("cal").innerHTML=h;
-  const dt=new Date(curY,curM,selDay);
-  $("dayTitle").textContent=`${cap(DSEM[dt.getDay()])}, ${selDay} de ${MESES[curM]}`;
-  const dl=list.filter(e=>e.dia===selDay);
-  $("dayCount").textContent=dl.length?`${dl.length} movimento${dl.length>1?"s":""}`:"";
-  let lh=dl.map(e=>{const dist=(+e.kmChegada||0)-(+e.kmSaida||0);return `<article class="mov">
-      <div class="times">
-        <div><div class="t">${esc(e.hSaida||"—")}</div><div class="k">${fmtKm(e.kmSaida)} km</div></div>
-        <span class="dist">${dist>=0?fmtKm(dist):"?"} km</span>
-        <div><div class="t">${esc(e.hChegada||"—")}</div><div class="k">${fmtKm(e.kmChegada)} km</div></div>
-      </div>
-      <div class="meta">${esc(e.itinerario||"Sem itinerário")}</div>
-      <div class="meta"><span class="code">${esc(e.codigo||"—")}</span>${esc(e.especificacao||"")}</div>
-      <div class="meta hint">${esc(e.nome||"")}${e.numero?` · n.º ${esc(e.numero)}`:""}${e.uo?` · UO ${esc(e.uo)}`:""}</div>
-      <div class="actions"><button class="btn danger" data-del="${e.id}">Apagar</button><button class="btn" data-edit="${e.id}">Editar</button></div>
-    </article>`}).join("");
-  if(!dl.length)lh=`<div class="empty">${S.ativa?"Sem movimentos neste dia.":"Adicione primeiro uma viatura (toque na matrícula, em cima)."}</div>`;
-  lh+=`<button class="btn primary block" id="addBtn" ${S.ativa?"":"disabled"}>${dl.length?"Adicionar outro movimento":"Adicionar movimento"}</button>`;
-  $("dayList").innerHTML=lh;
-  $("addBtn").onclick=()=>openForm(null);
+  $("sFalta").textContent=falta;$("sFalta").className=falta?"warnnum":"";
+  renderDay(list,gaps);
   const a=$("anom"); if(!a.dataset.dirty){a.value=S.anomalias[anomKey()]||"";$("anomSave").disabled=true}
-  const w=$("expWarn");
-  if(list.length>MAX_LINHAS){w.hidden=false;w.textContent=`Este mês tem ${list.length} linhas e o mapa tem ${MAX_LINHAS}. As restantes ${list.length-MAX_LINHAS} vão numa folha "Continuação" no mesmo ficheiro.`}else w.hidden=true;
+  // avisos na exportação
+  const msgs=[];
+  if(list.length>MAX_LINHAS)msgs.push(`Este mês tem ${list.length} linhas e o mapa tem ${MAX_LINHAS}. As restantes ${list.length-MAX_LINHAS} vão numa folha "Continuação".`);
+  const gd=[...new Set(list.filter(e=>gaps[e.id]).map(e=>e.dia))];
+  if(gd.length)msgs.push(`Há km por justificar ${gd.length>1?"nos dias":"no dia"} ${gd.join(", ")}. Confirme se falta algum movimento.`);
+  if(falta)msgs.push(`${falta} dia${falta>1?"s":""} út${falta>1?"eis":"il"} sem registo neste mês.`);
+  $("expWarn").hidden=!msgs.length;$("expWarn").innerHTML=msgs.map(esc).join("<br>");
   const uniq=f=>[...new Set(S.movimentos.map(f).filter(Boolean))].slice(-60);
   $("dlItin").innerHTML=uniq(e=>e.itinerario).map(v=>`<option value="${esc(v)}">`).join("");
   $("dlEsp").innerHTML=uniq(e=>e.especificacao).map(v=>`<option value="${esc(v)}">`).join("");
   $("dlNomes").innerHTML=uniq(e=>e.nome).map(v=>`<option value="${esc(v)}">`).join("");
   if(!$("vehSec").hidden)renderVeh();
+  renderResumo();renderNotices();
+}
+
+function recentTrips(mat){
+  const seen=new Set(),out=[];
+  for(const e of vehMovs(mat).sort((a,b)=>sortKey(b).localeCompare(sortKey(a)))){
+    const k=`${e.itinerario}|${e.codigo}|${e.especificacao}`;if(seen.has(k)||!e.itinerario)continue;seen.add(k);out.push(e);if(out.length>=3)break;
+  }
+  return out;
+}
+
+function renderDay(list,gaps){
+  const dt=new Date(curY,curM,selDay), iso=isoOf(curY,curM,selDay);
+  $("dayTitle").textContent=`${cap(DSEM[dt.getDay()])}, ${selDay} de ${MESES[curM]}`;
+  const dl=list.filter(e=>e.dia===selDay), fer=feriado(iso), motivo=S.semUso[`${S.ativa}|${iso}`];
+  $("dayCount").textContent=dl.length?`${dl.length} movimento${dl.length>1?"s":""}`:"";
+  $("dayTag").innerHTML=fer?`<span class="daytag">Feriado · ${esc(fer)}</span>`:"";
+  let lh=dl.map(e=>{
+    const dist=(+e.kmChegada||0)-(+e.kmSaida||0), g=gaps[e.id];
+    const gmsg=g?(g.gap>0?`Faltam ${fmtKm(g.gap)} km: a chegada anterior (dia ${g.prev.dia}) foi aos ${fmtKm(g.prev.kmChegada)} km.`:`A saída é ${fmtKm(-g.gap)} km inferior à chegada anterior (dia ${g.prev.dia}, ${fmtKm(g.prev.kmChegada)} km).`):"";
+    let part="";if(e.grupo){const grp=S.movimentos.filter(x=>x.grupo===e.grupo).sort((a,b)=>a.kmSaida-b.kmSaida);part=`<div class="part">Deslocação repartida · parte ${grp.findIndex(x=>x.id===e.id)+1} de ${grp.length}</div>`}
+    return `<article class="mov${g?" gap":""}">
+      ${part}
+      <div class="times">
+        <div><div class="t">${esc(e.hSaida||"—")}</div><div class="k">${fmtKm(e.kmSaida)} km</div></div>
+        <span class="dist">${dist>=0?fmtKm(dist):"?"} km</span>
+        <div><div class="t">${esc(e.hChegada||"—")}</div><div class="k">${fmtKm(e.kmChegada)} km</div></div>
+      </div>
+      ${g?`<div class="gapmsg">${gmsg}</div>`:""}
+      <div class="meta">${esc(e.itinerario||"Sem itinerário")}</div>
+      <div class="meta"><span class="code">${esc(e.codigo||"—")}</span>${esc(e.especificacao||"")}</div>
+      <div class="meta hint">${esc(e.nome||"")}${e.numero?` · n.º ${esc(e.numero)}`:""}${e.uo?` · UO ${esc(e.uo)}`:""}</div>
+      <div class="actions"><button class="btn danger" data-del="${e.id}">Apagar</button><button class="btn" data-edit="${e.id}">Editar</button></div>
+    </article>`}).join("");
+  if(!S.ativa){$("dayList").innerHTML=`<div class="empty">Adicione primeiro uma viatura (toque na matrícula, em cima).</div>`;return}
+  if(!dl.length){
+    if(motivo)lh=`<div class="empty">Marcado como <b>${esc(motivo)}</b>.<br><button class="btn ghost" id="unOff" style="margin-top:8px">Desmarcar</button></div>`;
+    else lh=`<div class="empty">Sem movimentos neste dia.</div>`;
+  }
+  const trips=recentTrips(S.ativa);
+  if(trips.length&&!motivo)lh+=`<div class="repeat"><div class="lbl">Repetir deslocação</div>${trips.map(t=>`<button class="chip" data-rep="${t.id}">${ICON_REPEAT}<span><b>${esc(t.itinerario)}</b> · ${esc(t.codigo)} ${esc(t.especificacao||"")}</span></button>`).join("")}</div>`;
+  if(!motivo)lh+=`<button class="btn primary block" id="addBtn">${dl.length?"Adicionar outro movimento":"Adicionar movimento"}</button>`;
+  if(!dl.length&&!motivo)lh+=`<div class="offbox"><select id="offSel" aria-label="Motivo">${MOTIVOS.map(m=>`<option>${m}</option>`).join("")}</select><button class="btn" id="offBtn">Marcar sem utilização</button></div>`;
+  $("dayList").innerHTML=lh;
 }
 
 $("cal").addEventListener("click",e=>{const b=e.target.closest("[data-d]");if(!b)return;selDay=+b.dataset.d;closeForm();render()});
 $("dayList").addEventListener("click",e=>{
+  if(e.target.closest("#addBtn")){openForm(null);return}
+  const rep=e.target.closest("[data-rep]");if(rep){openForm(null,S.movimentos.find(x=>x.id===rep.dataset.rep));return}
+  if(e.target.closest("#offBtn")){S.semUso[`${S.ativa}|${isoOf(curY,curM,selDay)}`]=$("offSel").value;save();render();toast("Dia marcado sem utilização");return}
+  if(e.target.closest("#unOff")){delete S.semUso[`${S.ativa}|${isoOf(curY,curM,selDay)}`];save();render();return}
   const ed=e.target.closest("[data-edit]"); if(ed){openForm(S.movimentos.find(x=>x.id===ed.dataset.edit));return}
   const del=e.target.closest("[data-del]"); if(!del)return;
   if(!del.classList.contains("armed")){del.classList.add("armed");del.textContent="Confirmar apagar";setTimeout(()=>{if(del.isConnected){del.classList.remove("armed");del.textContent="Apagar"}},4000);return}
   S.movimentos=S.movimentos.filter(x=>x.id!==del.dataset.del);save();render();toast("Movimento apagado");
 });
-function shiftMonth(d){curM+=d;if(curM<0){curM=11;curY--}if(curM>11){curM=0;curY++}
+function goMonth(y,m){curY=y;curM=m;
   selDay=(curY===now.getFullYear()&&curM===now.getMonth())?now.getDate():Math.min(selDay,new Date(curY,curM+1,0).getDate());
   $("anom").dataset.dirty="";closeForm();render()}
+function shiftMonth(d){let y=curY,m=curM+d;if(m<0){m=11;y--}if(m>11){m=0;y++}goMonth(y,m)}
 $("prev").onclick=()=>shiftMonth(-1);$("next").onclick=()=>shiftMonth(1);
 
-/* ---------- movimento ---------- */
-function lastKmBefore(mat,iso,hora){
+/* ---------- formulário de movimento ---------- */
+function lastBefore(mat,iso,hora,excludeId){
   const key=`${iso} ${hora||"99:99"}`;let best=null;
-  for(const e of vehMovs(mat)){const k=sortKey(e);if(k<key&&(!best||k>sortKey(best)))best=e}
-  return best?best.kmChegada:"";
+  for(const e of vehMovs(mat)){if(e.id===excludeId)continue;const k=sortKey(e);if(k<key&&(!best||k>sortKey(best)))best=e}
+  return best;
 }
+const lastKmBefore=(mat,iso,hora)=>lastBefore(mat,iso,hora)?.kmChegada??"";
 function fillMatSelect(sel){$("f_mat").innerHTML=Object.keys(S.viaturas).map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");$("f_mat").value=sel}
-function openForm(e){
-  editingId=e?e.id:null;
-  $("formTitle").textContent=e?"Editar movimento":"Novo movimento";
-  const iso=e?`${e.mes}-${pad(e.dia)}`:`${curY}-${pad(curM+1)}-${pad(selDay)}`;
+function openForm(e,tpl){
+  editingId=e?e.id:null; template=tpl||null;
+  $("formTitle").textContent=e?"Editar movimento":(tpl?"Repetir deslocação":"Novo movimento");
+  const src=e||tpl||{};
+  const iso=e?`${e.mes}-${pad(e.dia)}`:isoOf(curY,curM,selDay);
   const T=S.trabalhador||{};
   fillMatSelect(e?e.matricula:S.ativa);
   $("f_data").value=iso;
-  $("f_hs").value=e?.hSaida||"";
+  $("f_hs").value=src.hSaida||"";
   $("f_ks").value=e?(e.kmSaida??""):lastKmBefore(S.ativa,iso);
-  $("f_hc").value=e?.hChegada||"";
+  $("f_hc").value=src.hChegada||"";
   $("f_kc").value=e?(e.kmChegada??""):"";
-  $("f_uo").value=e?(e.uo??""):(T.uo??"");
-  $("f_num").value=e?(e.numero??""):(T.numero??"");
-  $("f_nome").value=e?(e.nome??""):(T.nome??"");
-  $("f_itin").value=e?.itinerario||"";
-  $("f_cod").value=e?.codigo||"A1";
-  $("f_esp").value=e?.especificacao||"";
+  $("f_kc").placeholder=(!e&&tpl&&$("f_ks").value)?`ex.: ${+$("f_ks").value+((+tpl.kmChegada)-(+tpl.kmSaida))}`:"";
+  $("f_uo").value=e||tpl?(src.uo??""):(T.uo??"");
+  $("f_num").value=e||tpl?(src.numero??""):(T.numero??"");
+  $("f_nome").value=e||tpl?(src.nome??""):(T.nome??"");
+  $("f_itin").value=src.itinerario||"";
+  $("f_cod").value=src.codigo||"A1";
+  $("f_esp").value=src.especificacao||"";
+  $("parts").innerHTML="";$("addPart").hidden=!!e;
   $("formErr").hidden=true;updDist();
   $("formSec").hidden=false;$("formSec").scrollIntoView({block:"start"});
+  if(tpl)setTimeout(()=>$("f_kc").focus(),50);
 }
-function closeForm(){$("formSec").hidden=true;editingId=null}
+function closeForm(){$("formSec").hidden=true;editingId=null;template=null}
 $("formCancel").onclick=closeForm;
-function updDist(){const a=+$("f_ks").value,b=+$("f_kc").value;$("distHint").textContent=($("f_ks").value&&$("f_kc").value)?(b>=a?`Percorridos: ${fmtKm(b-a)} km`:"Os km de chegada são inferiores aos de saída."):""}
-$("f_ks").oninput=updDist;$("f_kc").oninput=updDist;
-const refreshKm=()=>{if(!editingId){$("f_ks").value=lastKmBefore($("f_mat").value,$("f_data").value);updDist()}};
+function partsData(){return[...$("parts").querySelectorAll(".partbox")].map(p=>({codigo:p.querySelector(".pc").value,especificacao:p.querySelector(".pe").value.trim(),km:p.querySelector(".pk").value.trim()}))}
+function updDist(){
+  const ksv=$("f_ks").value.trim(),kcv=$("f_kc").value.trim(),a=+ksv,b=+kcv;
+  $("distHint").textContent=(ksv&&kcv)?(b>=a?`Percorridos: ${fmtKm(b-a)} km`:"Os km de chegada são inferiores aos de saída."):"";
+  $("distHint").className="hint"+((ksv&&kcv&&b<a)?" warn":"");
+  // continuidade com o movimento anterior
+  const prev=lastBefore($("f_mat").value,$("f_data").value,$("f_hs").value,editingId);
+  const kh=$("ksHint");kh.className="hint";
+  if(prev&&ksv&&/^\d+$/.test(ksv)&&+ksv!==+prev.kmChegada){const g=+ksv-(+prev.kmChegada);kh.className="hint warn";kh.textContent=g>0?`Atenção: a chegada anterior (dia ${prev.dia}) foi aos ${fmtKm(prev.kmChegada)} km. Ficam ${fmtKm(g)} km por justificar.`:`Atenção: é inferior à chegada anterior (dia ${prev.dia}, ${fmtKm(prev.kmChegada)} km).`}
+  else kh.textContent=prev?`Chegada anterior: ${fmtKm(prev.kmChegada)} km (dia ${prev.dia}).`:"";
+  // repartição
+  const parts=partsData(),mh=$("mainKmHint");
+  if(parts.length&&ksv&&kcv&&b>=a){const others=parts.reduce((s,p)=>s+(+p.km||0),0),main=(b-a)-others;mh.hidden=false;mh.className="hint"+(main<=0?" warn":"");mh.textContent=main>0?`Esta atividade fica com ${fmtKm(main)} km.`:"Os km repartidos somam mais do que o percorrido."}
+  else mh.hidden=true;
+}
+["f_ks","f_kc","f_hs"].forEach(id=>$(id).addEventListener("input",updDist));
+$("parts").addEventListener("input",updDist);
+$("parts").addEventListener("click",e=>{const b=e.target.closest("[data-rmpart]");if(b){b.closest(".partbox").remove();renumParts();updDist()}});
+function renumParts(){$("parts").querySelectorAll(".partbox .ph span").forEach((s,i)=>s.textContent=`Outra atividade ${i+1}`)}
+$("addPart").onclick=()=>{
+  const d=document.createElement("div");d.className="partbox";
+  d.innerHTML=`<div class="ph"><span></span><button type="button" data-rmpart>Remover</button></div>
+    <label>Código<select class="pc">${codOptions}</select></label>
+    <div class="pgrid"><label>Especificação<input class="pe" list="dlEsp" autocomplete="off"></label><label>Kms<input class="pk" inputmode="numeric" autocomplete="off"></label></div>`;
+  $("parts").appendChild(d);renumParts();updDist();d.querySelector(".pc").focus();
+};
+const refreshKm=()=>{if(!editingId){$("f_ks").value=lastKmBefore($("f_mat").value,$("f_data").value);}updDist()};
 $("f_data").onchange=refreshKm;$("f_mat").onchange=refreshKm;
 
 $("movForm").addEventListener("submit",ev=>{
@@ -406,14 +587,62 @@ $("movForm").addEventListener("submit",ev=>{
   if(!hs||!hc)return err("Preencha as horas de saída e de chegada.");
   if(!/^\d+$/.test(ks)||!/^\d+$/.test(kc))return err("Os quilómetros devem ser números inteiros.");
   if(+kc<+ks)return err("Os km de chegada não podem ser inferiores aos de saída.");
+  const parts=partsData();
+  for(const p of parts)if(!/^\d+$/.test(p.km)||+p.km<=0)return err("Indique os km (número inteiro maior que zero) de cada atividade repartida.");
+  const others=parts.reduce((s,p)=>s+(+p.km),0), mainKm=(+kc-+ks)-others;
+  if(parts.length&&mainKm<=0)return err("Os km repartidos têm de ser menos do que os km percorridos.");
   const [y,m,d]=iso.split("-");
-  const data={matricula:$("f_mat").value,mes:`${y}-${m}`,dia:+d,hSaida:hs,kmSaida:+ks,hChegada:hc,kmChegada:+kc,
-    uo:$("f_uo").value.trim(),numero:$("f_num").value.trim(),nome:$("f_nome").value.trim(),
-    itinerario:$("f_itin").value.trim(),codigo:$("f_cod").value,especificacao:$("f_esp").value.trim()};
-  if(editingId){const i=S.movimentos.findIndex(x=>x.id===editingId);S.movimentos[i]={...S.movimentos[i],...data}}
-  else S.movimentos.push({id:uid(),criado:Date.now(),...data});
-  S.ativa=data.matricula;save();
-  curY=+y;curM=+m-1;selDay=+d;closeForm();render();if(storageOk)toast("Movimento guardado");
+  const base={matricula:$("f_mat").value,mes:`${y}-${m}`,dia:+d,hSaida:hs,hChegada:hc,
+    uo:$("f_uo").value.trim(),numero:$("f_num").value.trim(),nome:$("f_nome").value.trim(),itinerario:$("f_itin").value.trim()};
+  const main={...base,kmSaida:+ks,kmChegada:+kc,codigo:$("f_cod").value,especificacao:$("f_esp").value.trim()};
+  if(editingId){const i=S.movimentos.findIndex(x=>x.id===editingId);S.movimentos[i]={...S.movimentos[i],...main}}
+  else if(!parts.length)S.movimentos.push({id:uid(),criado:Date.now(),...main});
+  else{
+    const grupo=uid();let k=+ks;
+    const segs=[{codigo:main.codigo,especificacao:main.especificacao,km:mainKm},...parts.map(p=>({...p,km:+p.km}))];
+    segs.forEach((s,i)=>{S.movimentos.push({id:uid(),criado:Date.now()+i,grupo,...base,kmSaida:k,kmChegada:k+s.km,codigo:s.codigo,especificacao:s.especificacao});k+=s.km});
+  }
+  delete S.semUso[`${base.matricula}|${iso}`];
+  S.ativa=base.matricula;save();
+  curY=+y;curM=+m-1;selDay=+d;closeForm();render();if(storageOk)toast(parts.length?`Guardado em ${parts.length+1} linhas`:"Movimento guardado");
+});
+
+/* ---------- resumo por atividade ---------- */
+function renderResumo(){
+  const list=resumoAno?vehMovs(S.ativa).filter(e=>e.mes.startsWith(curY+"-")):monthEntries();
+  const tot={};list.forEach(e=>{const km=Math.max(0,(+e.kmChegada||0)-(+e.kmSaida||0));tot[e.codigo||"—"]=(tot[e.codigo||"—"]||0)+km});
+  const rows=Object.entries(tot).sort((a,b)=>b[1]-a[1]),max=Math.max(1,...rows.map(r=>r[1])),sum=rows.reduce((s,r)=>s+r[1],0);
+  const per=resumoAno?`${curY}`:`${MESES[curM]} ${curY}`;
+  $("resumo").innerHTML=rows.length?`<div class="bars">${rows.map(([c,v])=>`<div class="bar"><span class="c">${esc(c)}</span><span class="d">${esc(CODDESC[c]||"")}</span><span class="v">${fmtKm(v)} km</span><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%"></div></div></div>`).join("")}</div><div class="total"><span>Total ${esc(per)}</span><b>${fmtKm(sum)} km</b></div>`:`<div class="hint">Sem km registados em ${esc(per)}.</div>`;
+}
+function setResumo(ano){resumoAno=ano;$("rMes").setAttribute("aria-pressed",String(!ano));$("rAno").setAttribute("aria-pressed",String(ano));renderResumo()}
+$("rMes").onclick=()=>setResumo(false);$("rAno").onclick=()=>setResumo(true);
+
+/* ---------- avisos do início do mês ---------- */
+function renderNotices(){
+  const out=[];
+  const ty=now.getFullYear(),tm=now.getMonth(),py=tm?ty:ty-1,pm=tm?tm-1:11;
+  const prazo=quintoDiaUtil(ty,tm);
+  if(now.getDate()<=prazo+3){
+    for(const mat of Object.keys(S.viaturas)){
+      const n=entriesFor(mat,py,pm).length;
+      if(!n||S.entregues[`${mat}|${mesKey(py,pm)}`])continue;
+      const atraso=now.getDate()>prazo;
+      out.push(`<div class="notice warn"><div><b>Mapa de ${MESES[pm]} · ${esc(mat)}</b><br>${n} linha${n>1?"s":""} registada${n>1?"s":""}. ${atraso?`O prazo era ${prazo} de ${MESES[tm]} (5.º dia útil).`:`Registar até ${prazo} de ${MESES[tm]} (5.º dia útil).`}</div>
+        <div class="actions"><button class="btn primary" data-nexp="${esc(mat)}">Descarregar ${MESES[pm]}</button><button class="btn" data-ndone="${esc(mat)}">Já entreguei</button></div></div>`);
+    }
+  }
+  const dias=(Date.now()-S.ultimaCopia)/864e5;
+  if(S.movimentos.length>=5&&dias>35&&!sessionStorage.getItem("muv.copiaAdiada"))
+    out.push(`<div class="notice info"><div><b>Guarde uma cópia de segurança</b><br>${S.ultimaCopia?`A última cópia foi há ${Math.floor(dias)} dias.`:"Ainda não guardou nenhuma cópia."} Os registos só existem neste telemóvel.</div>
+      <div class="actions"><button class="btn primary" data-ncopy>Guardar cópia</button><button class="btn" data-nlater>Mais tarde</button></div></div>`);
+  $("notices").innerHTML=out.join("");$("notices").hidden=!out.length;
+}
+$("notices").addEventListener("click",e=>{
+  const ex=e.target.closest("[data-nexp]");if(ex){const pm=now.getMonth()?now.getMonth()-1:11,py=now.getMonth()?now.getFullYear():now.getFullYear()-1;exportMonth(ex.dataset.nexp,py,pm,ex);return}
+  const dn=e.target.closest("[data-ndone]");if(dn){const pm=now.getMonth()?now.getMonth()-1:11,py=now.getMonth()?now.getFullYear():now.getFullYear()-1;S.entregues[`${dn.dataset.ndone}|${mesKey(py,pm)}`]=true;save();renderNotices();toast("Marcado como entregue");return}
+  if(e.target.closest("[data-ncopy]")){backup();return}
+  if(e.target.closest("[data-nlater]")){try{sessionStorage.setItem("muv.copiaAdiada","1")}catch(_){}renderNotices()}
 });
 
 /* ---------- anomalias ---------- */
@@ -434,16 +663,18 @@ function loadVehForm(m){
 $("plate").onclick=()=>{const s=$("vehSec");if(!s.hidden){s.hidden=true;return}$("cfgSec").hidden=true;renderVeh();loadVehForm(S.ativa||null);s.hidden=false;s.scrollIntoView({block:"start"})};
 $("vlist").addEventListener("click",e=>{const b=e.target.closest("[data-v]");if(!b)return;S.ativa=b.dataset.v;save();$("anom").dataset.dirty="";loadVehForm(S.ativa);render();toast(`Viatura ativa: ${S.ativa}`)});
 $("vehNew").onclick=()=>loadVehForm(null);
+function renameKeys(obj,from,to){for(const k of Object.keys(obj))if(k.startsWith(from+"|")){obj[to+k.slice(from.length)]=obj[k];delete obj[k]}}
+function dropKeys(obj,mat){for(const k of Object.keys(obj))if(k.startsWith(mat+"|"))delete obj[k]}
 $("vehForm").addEventListener("submit",ev=>{
   ev.preventDefault();
   const mat=normMat($("v_mat").value), err=m=>{$("vehErr").textContent=m;$("vehErr").hidden=false};
   if(!mat)return err("Indique a matrícula.");
   if(mat!==editingVeh&&S.viaturas[mat])return err("Essa matrícula já existe na lista.");
   const v={marca:$("v_marca").value.trim(),modelo:$("v_modelo").value.trim()};
-  if(editingVeh&&mat!==editingVeh){ // mudar matrícula: leva os movimentos e anomalias
+  if(editingVeh&&mat!==editingVeh){
     delete S.viaturas[editingVeh];
     S.movimentos.forEach(x=>{if(x.matricula===editingVeh)x.matricula=mat});
-    for(const k of Object.keys(S.anomalias))if(k.startsWith(editingVeh+"|")){S.anomalias[mat+k.slice(editingVeh.length)]=S.anomalias[k];delete S.anomalias[k]}
+    renameKeys(S.anomalias,editingVeh,mat);renameKeys(S.semUso,editingVeh,mat);renameKeys(S.entregues,editingVeh,mat);
     if(S.ativa===editingVeh)S.ativa=mat;
   }
   S.viaturas[mat]=v; if(!editingVeh)S.ativa=mat;
@@ -454,7 +685,7 @@ $("vehDel").onclick=()=>{
   const n=vehMovs(m).length;
   if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent=n?`Confirmar: apagar ${m} e ${n} movimento(s)`:`Confirmar: apagar ${m}`;return}
   delete S.viaturas[m];S.movimentos=S.movimentos.filter(x=>x.matricula!==m);
-  for(const k of Object.keys(S.anomalias))if(k.startsWith(m+"|"))delete S.anomalias[k];
+  dropKeys(S.anomalias,m);dropKeys(S.semUso,m);dropKeys(S.entregues,m);
   if(S.ativa===m)S.ativa=Object.keys(S.viaturas)[0]||"";
   save();loadVehForm(null);render();toast("Viatura apagada");
 };
@@ -462,25 +693,37 @@ $("vehDel").onclick=()=>{
 /* ---------- definições e cópia ---------- */
 $("openCfg").onclick=()=>{const s=$("cfgSec");if(!s.hidden){s.hidden=true;return}$("vehSec").hidden=true;
   const T=S.trabalhador||{};$("c_uo").value=T.uo||"";$("c_numero").value=T.numero||"";$("c_nome").value=T.nome||"";
-  $("bkInfo").textContent=`${S.movimentos.length} movimentos e ${Object.keys(S.viaturas).length} viatura(s) guardados neste telemóvel.`;
+  $("c_fmun").value=S.opcoes.fmun||"";$("c_carnaval").checked=!!S.opcoes.carnaval;$("cfgErr").hidden=true;
+  $("bkInfo").textContent=`${S.movimentos.length} movimentos e ${Object.keys(S.viaturas).length} viatura(s) guardados neste telemóvel.${S.ultimaCopia?` Última cópia: ${new Date(S.ultimaCopia).toLocaleDateString("pt-PT")}.`:""}`;
+  $("verInfo").textContent=`Versão ${APP_VERSION}`;
   s.hidden=false;s.scrollIntoView({block:"start"})};
-$("cfgForm").addEventListener("submit",ev=>{ev.preventDefault();S.trabalhador={uo:$("c_uo").value.trim(),numero:$("c_numero").value.trim(),nome:$("c_nome").value.trim()};save();$("cfgSec").hidden=true;toast("Definições guardadas")});
+$("cfgForm").addEventListener("submit",ev=>{ev.preventDefault();
+  const fm=$("c_fmun").value.trim();
+  if(fm&&!/^(\d{1,2})\/(\d{1,2})$/.test(fm)){$("cfgErr").textContent="Escreva o feriado municipal como dia/mês, por exemplo 25/07.";$("cfgErr").hidden=false;return}
+  S.trabalhador={uo:$("c_uo").value.trim(),numero:$("c_numero").value.trim(),nome:$("c_nome").value.trim()};
+  S.opcoes.fmun=fm;S.opcoes.carnaval=$("c_carnaval").checked;
+  save();$("cfgSec").hidden=true;render();toast("Definições guardadas")});
 
 async function giveFile(blob,name){
   const file=new File([blob],name,{type:blob.type});
   if(navigator.canShare&&navigator.canShare({files:[file]})&&/Android|iPhone|iPad/i.test(navigator.userAgent)){
-    try{await navigator.share({files:[file],title:name});return}catch(e){if(e.name==="AbortError")return}
+    try{await navigator.share({files:[file],title:name});return true}catch(e){if(e.name==="AbortError")return false}
   }
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+  return true;
 }
-$("bkExport").onclick=()=>giveFile(new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),`MUV_copia_${todayISO}.json`);
+async function backup(){
+  const ok=await giveFile(new Blob([JSON.stringify(S,null,1)],{type:"application/json"}),`MUV_copia_${todayISO}.json`);
+  if(ok){S.ultimaCopia=Date.now();save();renderNotices();toast("Cópia criada")}
+}
+$("bkExport").onclick=backup;
 $("bkImportBtn").onclick=()=>$("bkImport").click();
 $("bkImport").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   try{const d=JSON.parse(await f.text());if(!d.viaturas||!Array.isArray(d.movimentos))throw 0;
-    // junta à informação existente sem duplicar
     Object.assign(S.viaturas,d.viaturas);const ids=new Set(S.movimentos.map(x=>x.id));
-    d.movimentos.forEach(x=>{if(!ids.has(x.id))S.movimentos.push(x)});Object.assign(S.anomalias,d.anomalias||{});
+    d.movimentos.forEach(x=>{if(!ids.has(x.id))S.movimentos.push(x)});
+    Object.assign(S.anomalias,d.anomalias||{});Object.assign(S.semUso,d.semUso||{});Object.assign(S.entregues,d.entregues||{});
     if(d.trabalhador&&!S.trabalhador?.nome)S.trabalhador=d.trabalhador;
     save();render();$("bkInfo").textContent=`Cópia reposta: ${S.movimentos.length} movimentos no total.`;toast("Cópia reposta");
   }catch(_){toast("Esse ficheiro não é uma cópia válida da app MUV.")}
@@ -490,42 +733,53 @@ $("bkImport").onchange=async e=>{
 /* ---------- Excel ---------- */
 function horaFrac(h){if(!h)return null;const[a,b]=h.split(":").map(Number);return (a*60+b)/1440}
 function numOr(v){return /^\d+$/.test(String(v??"").trim())?Number(v):(v||null)}
-$("exportBtn").onclick=async()=>{
-  const btn=$("exportBtn"),er=$("expErr");er.hidden=true;btn.disabled=true;btn.textContent="A gerar…";
+async function buildWorkbook(mat,y,m){
+  if(!window.ExcelJS)throw new Error("A ferramenta de Excel ainda não carregou. Tente de novo dentro de segundos.");
+  const r=await fetch("modelo.xlsx");if(!r.ok)throw new Error("Não foi possível abrir o modelo do mapa.");
+  const wb=new ExcelJS.Workbook();await wb.xlsx.load(await r.arrayBuffer());
+  const ws=wb.worksheets[0], v=S.viaturas[mat]||{};
+  ws.name=MESES[m].toUpperCase();
+  ws.getCell("D5").value=mat;ws.getCell("G5").value=v.marca||"";ws.getCell("J5").value=v.modelo||"";
+  ws.getCell("R5").value=new Date(Date.UTC(y,m,1));
+  for(let row=9;row<9+MAX_LINHAS;row++)for(const c of[2,3,4,5,6,7,8,9,13,17,18])ws.getCell(row,c).value=null;
+  const list=entriesFor(mat,y,m);
+  list.slice(0,MAX_LINHAS).forEach((e,i)=>{const row=9+i;
+    const set=(c,val,fmt)=>{const cell=ws.getCell(row,c);cell.value=val;cell.alignment={horizontal:"center",vertical:"middle"};if(fmt)cell.numFmt=fmt};
+    set(2,e.dia);set(3,horaFrac(e.hSaida),"h:mm");set(4,numOr(e.kmSaida));set(5,horaFrac(e.hChegada),"h:mm");set(6,numOr(e.kmChegada));
+    set(7,numOr(e.uo));set(8,numOr(e.numero));set(9,e.nome||null);set(13,e.itinerario||null);set(17,e.codigo||null);set(18,e.especificacao||null)});
+  const lines=(S.anomalias[anomKey(mat,y,m)]||"").split("\n").map(s=>s.trim()).filter(Boolean);
+  lines.slice(0,7).forEach((t,i)=>{ws.getCell(52+i,2).value=t});
+  if(lines.length>7)ws.getCell(58,2).value=lines.slice(6).join(" · ");
+  if(list.length>MAX_LINHAS){
+    const c=wb.addWorksheet("Continuação",{pageSetup:{orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0}});
+    c.addRow(["Dia","Saída Hora","Saída Kms","Chegada Hora","Chegada Kms","UO","Número","Nome Legível","Itinerário","Código","Especificação do serviço"]).font={bold:true};
+    list.slice(MAX_LINHAS).forEach(e=>{const rw=c.addRow([e.dia,horaFrac(e.hSaida),numOr(e.kmSaida),horaFrac(e.hChegada),numOr(e.kmChegada),numOr(e.uo),numOr(e.numero),e.nome,e.itinerario,e.codigo,e.especificacao]);rw.getCell(2).numFmt="h:mm";rw.getCell(4).numFmt="h:mm"});
+    c.columns.forEach((col,i)=>col.width=[6,9,10,10,10,9,9,22,26,8,28][i]);
+    c.eachRow(rw=>rw.eachCell({includeEmpty:true},cell=>{cell.border={top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}}));
+  }
+  return wb;
+}
+async function exportMonth(mat,y,m,btn){
+  const label=btn.textContent,er=$("expErr");er.hidden=true;btn.disabled=true;btn.textContent="A gerar…";
   try{
-    if(!S.ativa)throw new Error("Escolha primeiro uma viatura.");
-    if(!window.ExcelJS)throw new Error("A ferramenta de Excel ainda não carregou. Tente de novo dentro de segundos.");
-    const r=await fetch("modelo.xlsx");if(!r.ok)throw new Error("Não foi possível abrir o modelo do mapa.");
-    const wb=new ExcelJS.Workbook();await wb.xlsx.load(await r.arrayBuffer());
-    const ws=wb.worksheets[0], v=S.viaturas[S.ativa]||{};
-    ws.name=MESES[curM].toUpperCase();
-    ws.getCell("D5").value=S.ativa;ws.getCell("G5").value=v.marca||"";ws.getCell("J5").value=v.modelo||"";
-    ws.getCell("R5").value=new Date(Date.UTC(curY,curM,1));
-    for(let row=9;row<9+MAX_LINHAS;row++)for(const c of[2,3,4,5,6,7,8,9,13,17,18])ws.getCell(row,c).value=null;
-    const list=monthEntries();
-    list.slice(0,MAX_LINHAS).forEach((e,i)=>{const row=9+i;
-      const set=(c,val,fmt)=>{const cell=ws.getCell(row,c);cell.value=val;cell.alignment={horizontal:"center",vertical:"middle"};if(fmt)cell.numFmt=fmt};
-      set(2,e.dia);set(3,horaFrac(e.hSaida),"h:mm");set(4,numOr(e.kmSaida));set(5,horaFrac(e.hChegada),"h:mm");set(6,numOr(e.kmChegada));
-      set(7,numOr(e.uo));set(8,numOr(e.numero));set(9,e.nome||null);set(13,e.itinerario||null);set(17,e.codigo||null);set(18,e.especificacao||null)});
-    const lines=(S.anomalias[anomKey()]||"").split("\n").map(s=>s.trim()).filter(Boolean);
-    lines.slice(0,7).forEach((t,i)=>{ws.getCell(52+i,2).value=t});
-    if(lines.length>7)ws.getCell(58,2).value=lines.slice(6).join(" · ");
-    if(list.length>MAX_LINHAS){
-      const c=wb.addWorksheet("Continuação",{pageSetup:{orientation:"landscape",fitToPage:true,fitToWidth:1,fitToHeight:0}});
-      c.addRow(["Dia","Saída Hora","Saída Kms","Chegada Hora","Chegada Kms","UO","Número","Nome Legível","Itinerário","Código","Especificação do serviço"]).font={bold:true};
-      list.slice(MAX_LINHAS).forEach(e=>{const rw=c.addRow([e.dia,horaFrac(e.hSaida),numOr(e.kmSaida),horaFrac(e.hChegada),numOr(e.kmChegada),numOr(e.uo),numOr(e.numero),e.nome,e.itinerario,e.codigo,e.especificacao]);rw.getCell(2).numFmt="h:mm";rw.getCell(4).numFmt="h:mm"});
-      c.columns.forEach((col,i)=>col.width=[6,9,10,10,10,9,9,22,26,8,28][i]);
-      c.eachRow(rw=>rw.eachCell({includeEmpty:true},cell=>{cell.border={top:{style:"thin"},left:{style:"thin"},bottom:{style:"thin"},right:{style:"thin"}}}));
-    }
-    const buf=await wb.xlsx.writeBuffer();
+    if(!mat)throw new Error("Escolha primeiro uma viatura.");
+    const wb=await buildWorkbook(mat,y,m),buf=await wb.xlsx.writeBuffer();
     await giveFile(new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}),
-      `Modelo_33_MapaViaturas_${cap(MESES[curM])}_${curY}_${S.ativa.replace(/[^\w-]/g,"")}.xlsx`);
-  }catch(e){er.textContent=e.message||"Ocorreu um erro ao gerar o Excel.";er.hidden=false}
-  finally{btn.disabled=false;btn.textContent="Descarregar Excel do mês"}
-};
+      `Modelo_33_MapaViaturas_${cap(MESES[m])}_${y}_${mat.replace(/[^\w-]/g,"")}.xlsx`);
+  }catch(e){er.textContent=e.message||"Ocorreu um erro ao gerar o Excel.";er.hidden=false;if(btn.id!=="exportBtn")toast(er.textContent)}
+  finally{btn.disabled=false;btn.textContent=label}
+}
+$("exportBtn").onclick=()=>exportMonth(S.ativa,curY,curM,$("exportBtn"));
 
-/* ---------- instalação offline ---------- */
-if("serviceWorker" in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+/* ---------- instalação offline e atualizações ---------- */
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){
+  const hadController=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js").then(reg=>{
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")reg.update().catch(()=>{})});
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(hadController)$("updateBar").hidden=false});
+  $("updateBtn").onclick=()=>location.reload();
+}
 const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
 if(!standalone){const ih=$("installHint");ih.hidden=false;
   ih.textContent=/iPhone|iPad/i.test(navigator.userAgent)?"Para instalar: no Safari toque em Partilhar e depois em “Adicionar ao ecrã principal”.":"Para instalar: no menu do Chrome (⋮) toque em “Instalar aplicação” ou “Adicionar ao ecrã principal”."}
