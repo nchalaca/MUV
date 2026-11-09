@@ -1,5 +1,5 @@
 // Ao publicar uma nova versão, mude o número abaixo (muv-v3, muv-v4, ...).
-const CACHE = "muv-v2";
+const CACHE = "muv-v3";
 const FILES = ["./", "index.html", "manifest.webmanifest", "exceljs.min.js", "modelo.xlsx", "icon-192.png", "icon-512.png", "icon-180.png"];
 
 self.addEventListener("install", e => {

@@ -212,7 +212,7 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
       <fieldset>
         <legend>Feriados</legend>
         <div class="hint">Os feriados nacionais são reconhecidos automaticamente e não contam como dias em falta.</div>
-        <label>Feriado municipal (dia/mês)<input id="c_fmun" placeholder="ex.: 25/07" inputmode="numeric" autocomplete="off"></label>
+        <div><div class="hint" style="font-weight:600;text-transform:uppercase;letter-spacing:.05em;font-size:12px;margin-bottom:4px">Feriado municipal</div><div class="row"><label>Dia<select id="c_fmunD"></select></label><label>Mês<select id="c_fmunM"></select></label></div></div>
         <label class="check"><input type="checkbox" id="c_carnaval"> Contar a terça-feira de Carnaval como feriado</label>
       </fieldset>
       <div class="err" id="cfgErr" hidden></div>
@@ -332,7 +332,7 @@ legend{font-family:var(--f-display);font-weight:600;font-size:15px;padding:0;mar
 
 <script src="exceljs.min.js" defer></script>
 <script>
-const APP_VERSION="2 · novembro 2026";
+const APP_VERSION="2.1 · novembro 2026";
 const MESES=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 const DSEM=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
 const CODIGOS=[["A1","Atividades correntes do serviço"],["A2","MAR 2020 - Assistência Técnica"],["A3","PDR 2020 - Assistência Técnica"],["A4","RICA - Contabilidades agrícolas"],["A5","VITIS - Sergude"],["A6","VITIS - Sta. Bárbara"],["A7","POCI - SAMA"],["A8","ITI Montesinho-Nogueira"],["A9","ITI Douro Internacional, Sabor, Maçãs e Vale do Coa"],["A10","ITI Peneda-Gerês"],["A0","Outro projeto (indicar na especificação)"]];
@@ -373,6 +373,8 @@ if(navigator.storage?.persist)navigator.storage.persist().catch(()=>{});
 
 let curY=now.getFullYear(), curM=now.getMonth(), selDay=now.getDate(), editingId=null, editingVeh=null, template=null, resumoAno=false;
 
+$("c_fmunD").innerHTML='<option value="">—</option>'+Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");
+$("c_fmunM").innerHTML='<option value="">—</option>'+MESES.map((m,i)=>`<option value="${i+1}">${cap(m)}</option>`).join("");
 const codOptions=CODIGOS.map(([c,d])=>`<option value="${c}">${c} — ${d}</option>`).join("");
 $("f_cod").innerHTML=codOptions;
 
@@ -693,13 +695,15 @@ $("vehDel").onclick=()=>{
 /* ---------- definições e cópia ---------- */
 $("openCfg").onclick=()=>{const s=$("cfgSec");if(!s.hidden){s.hidden=true;return}$("vehSec").hidden=true;
   const T=S.trabalhador||{};$("c_uo").value=T.uo||"";$("c_numero").value=T.numero||"";$("c_nome").value=T.nome||"";
-  $("c_fmun").value=S.opcoes.fmun||"";$("c_carnaval").checked=!!S.opcoes.carnaval;$("cfgErr").hidden=true;
+  const fmm=/^(\d{1,2})\/(\d{1,2})$/.exec(S.opcoes.fmun||"");$("c_fmunD").value=fmm?String(+fmm[1]):"";$("c_fmunM").value=fmm?String(+fmm[2]):"";$("c_carnaval").checked=!!S.opcoes.carnaval;$("cfgErr").hidden=true;
   $("bkInfo").textContent=`${S.movimentos.length} movimentos e ${Object.keys(S.viaturas).length} viatura(s) guardados neste telemóvel.${S.ultimaCopia?` Última cópia: ${new Date(S.ultimaCopia).toLocaleDateString("pt-PT")}.`:""}`;
   $("verInfo").textContent=`Versão ${APP_VERSION}`;
   s.hidden=false;s.scrollIntoView({block:"start"})};
 $("cfgForm").addEventListener("submit",ev=>{ev.preventDefault();
-  const fm=$("c_fmun").value.trim();
-  if(fm&&!/^(\d{1,2})\/(\d{1,2})$/.test(fm)){$("cfgErr").textContent="Escreva o feriado municipal como dia/mês, por exemplo 25/07.";$("cfgErr").hidden=false;return}
+  const fd=$("c_fmunD").value,fmo=$("c_fmunM").value;
+  if(!!fd!==!!fmo){$("cfgErr").textContent="Escolha o dia e o mês do feriado municipal, ou deixe os dois em branco.";$("cfgErr").hidden=false;return}
+  if(fd&&+fd>new Date(2024,+fmo,0).getDate()){$("cfgErr").textContent=`${cap(MESES[+fmo-1])} não tem dia ${fd}.`;$("cfgErr").hidden=false;return}
+  const fm=fd?`${pad(fd)}/${pad(fmo)}`:"";
   S.trabalhador={uo:$("c_uo").value.trim(),numero:$("c_numero").value.trim(),nome:$("c_nome").value.trim()};
   S.opcoes.fmun=fm;S.opcoes.carnaval=$("c_carnaval").checked;
   save();$("cfgSec").hidden=true;render();toast("Definições guardadas")});
